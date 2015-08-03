@@ -31,6 +31,9 @@ url_featured_matches = (
     riot_api_host + 'observer-mode/rest/featured' + riot_api_key)
 url_summoner_by_name = (
     riot_api_host + 'api/lol/kr/v1.4/summoner/by-name/%s' + riot_api_key)
+url_summoner_detail_by_id = (
+    riot_api_host + 'api/lol/kr/v2.5/league/by-summoner/%s/entry' +
+    riot_api_key)
 url_find_matches = (
     riot_api_host + 'api/lol/kr/v2.2/matchlist/by-summoner/%d' + riot_api_key +
     '&beginTime=%s000')
@@ -176,6 +179,7 @@ class Summoner(ndb.Model):
   """ DB model for summoners. """
   name = ndb.StringProperty()
   user_id = ndb.IntegerProperty()
+  tier = ndb.StringProperty()
   last_update = ndb.DateTimeProperty()
 
 class Seed(webapp2.RequestHandler):
@@ -235,10 +239,12 @@ class ShowSummoners(webapp2.RequestHandler):
   def get(self):
     self.response.out.write('Totoal %d summoners<br/>' %
                             Summoner.query().count())
-    summoners = Summoner.query()
+    summoners = Summoner.query().order(Summoner.name)
     for summoner in summoners:
-      self.response.out.write('Name: %s, Id: %s, Updated: %s<br/>' % (
-          summoner.name, summoner.user_id, summoner.last_update))
+      self.response.out.write(
+          'Name: %s, Id: %s, Tier: %s, Updated: %s<br/>' % (
+          summoner.name, summoner.user_id, summoner.tier,
+          summoner.last_update))
 
 class CleanupSummoners(webapp2.RequestHandler):
   """ Removes duplicated summoners. """
@@ -284,17 +290,35 @@ class FindMatches(webapp2.RequestHandler):
     if len(not_updated_matchups) >= 1000:
       self.response.out.write(
           'More than 1000 matches are waiting for update. ' +
-          'Will not find more.');
-      return
+          'Will not find more.<br/>');
+      #return
 
     summoners = Summoner.query(
         ndb.OR(Summoner.last_update == None,
                Summoner.last_update < (
                    datetime.datetime.now() - datetime.timedelta(hours=24))
-               )).fetch(20)
+               )).fetch(10)
     if not summoners:
       self.response.out.write('No summoner to update match.');
       return
+
+    # Updates summoners' tiers.
+    url = url_summoner_detail_by_id % (
+        ','.join(str(summoner.user_id) for summoner in summoners))
+    self.response.out.write('Fetch url: %s<br/>' % url)
+    result = urlfetch.fetch(url)
+    if result.status_code == 200:
+      rc = json.loads(result.content)
+      for key in rc:
+        for league in rc[key]:
+          if league['queue'] == 'RANKED_SOLO_5x5':
+            summoners_to_update = Summoner.query(Summoner.user_id==int(key))
+            for s in summoners_to_update:
+              s.tier = league['tier']
+              s.put()
+            break
+
+    # Find matchs.
     count = 0
     for summoner in summoners:
       if not summoner.user_id:
@@ -319,7 +343,9 @@ class FindMatches(webapp2.RequestHandler):
               summoner.name)
           continue
         for match in rc['matches']:
-          # Does not check existence.
+          # Skips already existing matches.
+          if Matchup.query(Matchup.match_id==match['matchId']):
+            continue
           matchup = Matchup(match_id = match['matchId'])
           matchup.put()
           count += 1
