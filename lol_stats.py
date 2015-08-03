@@ -176,15 +176,16 @@ champ_name_map = {
   432 : '바드',
     }
 
+tier_PLATINUM = 4
 tier_sort_score = {
-    'CHALLENGER' : 1,
-    'MASTER' : 2,
-    'DIAMOND' : 3,
+    'UNRANKED' : 0,
+    'BRONZE' : 1,
+    'SILVER' : 2,
+    'GOLD' : 3,
     'PLATINUM' : 4,
-    'GOLD' : 5,
-    'SILVER' : 6,
-    'BRONZE' : 7,
-    'UNRANKED' : 8,
+    'DIAMOND' : 5,
+    'MASTER' : 6,
+    'CHALLENGER' : 7,
     }
 
 class Summoner(ndb.Model):
@@ -336,11 +337,20 @@ class FindMatches(webapp2.RequestHandler):
                                 summoner.name)
         continue
       # Updates summoner tier.
-      # TODO: Delete ummoner f the tier is lower than some criteria.
       summoner.tier = id_to_tier[summoner.user_id]
-      if summoner.tier not in tier_sort_score:
-        # Unknown tier, just pass now.
-        pass
+      self.response.out.write('Updated tier, %s is %s.<br/>' %
+                              (summoner.name, summoner.tier))
+      if (summoner.tier not in tier_sort_score or
+          tier_sort_score[summoner.tier] < tier_PLATINUM):
+        self.response.out.write('Drop low ranked player, %s (%s).<br/>' %
+                                (summoner.name, summoner.tier))
+        # Drops players lower than PLATINUM.
+        # The matches still can contain records for non PLATINUM users.
+        # This records are for PLATINUM and who played againt PLATINUM,
+        # who maybe are high rators in GOLD tier.
+        summoner.key.delete()
+        continue
+
       # Only fetches up to 500+ matches per execution.
       # We can update only 500 matches per 10 minutes.
       if count > 500:
@@ -369,7 +379,7 @@ class FindMatches(webapp2.RequestHandler):
           matchup.put()
           count += 1
         summoner.last_update = datetime.datetime.now()
-        self.response.out.write('Updated summoner %s, count = %d.<br/>' % (
+        self.response.out.write('Found new matches for %s, count = %d.<br/>' % (
             summoner.name, count))
       elif result.status_code == 429:
         self.response.out.write('Rate limit exceeded.<br/>')
@@ -378,7 +388,7 @@ class FindMatches(webapp2.RequestHandler):
         summoner.key.delete()
         self.response.out.write('Deleted summoner with match error: %s<br/>' %
                                 summoner.name)
-     summoner.put()
+      summoner.put()
 
 class ShowMatches(webapp2.RequestHandler):
   """ Shows matches up to 1000. """
