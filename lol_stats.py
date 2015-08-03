@@ -291,7 +291,7 @@ class FindMatches(webapp2.RequestHandler):
       self.response.out.write(
           'More than 1000 matches are waiting for update. ' +
           'Will not find more.<br/>');
-      #return
+      return
 
     summoners = Summoner.query(
         ndb.OR(Summoner.last_update == None,
