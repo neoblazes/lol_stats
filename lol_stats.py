@@ -396,11 +396,15 @@ class UpdateMatches(webapp2.RequestHandler):
         matchup.key.delete()
     # TODO: Updates new summoners.
     for name, user_id in summoner_name_id.iteritems():
+      found = Summoner.query(Summoner.name == name).fetch(1)
+      if found:
+        self.response.out.write('Summoner %s is already in DB.<br>' % name)
+        continue
       summoner = Summoner(name=name)
       summoner.user_id = user_id
       summoner.put()
       self.response.out.write(
-          'Added %s(%s) to Summoner DB<br>' % (name, user_id))
+          'Added %s(%s) to Summoner DB.<br>' % (name, user_id))
 
 class ShowLane(webapp2.RequestHandler):
   """ Shows win/lose statistics per champion.
