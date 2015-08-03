@@ -243,6 +243,9 @@ class ShowSummoners(webapp2.RequestHandler):
 class CleanupSummoners(webapp2.RequestHandler):
   """ Removes duplicated summoners. """
   def get(self):
+    ndb.delete_multi(Summoner.query(
+        Summoner.last_update == None).iter(keys_only=True))
+
     summoner_names = set()
     summoners = Summoner.query()
     for summoner in summoners:
