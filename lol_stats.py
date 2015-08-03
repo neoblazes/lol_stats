@@ -355,6 +355,7 @@ class FindMatches(webapp2.RequestHandler):
             summoner.name, count))
       elif result.status_code == 429:
         self.response.out.write('Rate limit exceeded.<br/>')
+        time.sleep(10)  # Sleeps 10 seconds to avoid ACL.
         break
       else:
         summoner.key.delete()
@@ -397,7 +398,7 @@ class UpdateMatches(webapp2.RequestHandler):
 
   def get(self):
     # Updates lane win/lose records.
-    matchups = Matchup.query(Matchup.match_creation == None).fetch(50)
+    matchups = Matchup.query(Matchup.match_creation == None).fetch(40)
     summoner_name_id = {}
     for matchup in matchups:
       url = url_update_match % matchup.match_id
@@ -420,6 +421,7 @@ class UpdateMatches(webapp2.RequestHandler):
               p['player']['summonerName']] = p['player']['summonerId']
       elif result.status_code == 429:
         self.response.out.write('Rate limit exceeded.<br/>')
+        time.sleep(10)  # Sleeps 10 seconds to avoid ACL.
         break
       else:
         matchup.key.delete()
@@ -579,9 +581,10 @@ class Main(webapp2.RequestHandler):
     self.response.out.write(
         '<a href="/lane?lane=bottom_duo_support">Bottom Dou Support</a><br/>')
     self.response.out.write(
-        'Collected %d summoners and %d matches.<br/>' % (
+        'Collected %d summoners and %d/%d matches analyzed.<br/>' % (
             Summoner.query().count(),
-            Matchup.query(Matchup.match_creation != None).count()))
+            Matchup.query(Matchup.match_creation != None).count(),
+            Matchup.query().count()))
 
 app = webapp2.WSGIApplication([
   # Update commands.

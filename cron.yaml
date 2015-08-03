@@ -7,4 +7,4 @@ cron:
   schedule: every 1 mins
 - description: remove matches older than 1 week
   url: /cleanup_matches
-  schedule: every 1 hours
+  schedule: every 12 hours
