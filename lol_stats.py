@@ -176,6 +176,17 @@ champ_name_map = {
   432 : '바드',
     }
 
+tier_sort_score = {
+    'CHALLENGER' : 1,
+    'MASTER' : 2,
+    'DIAMOND' : 3,
+    'PLATINUM' : 4,
+    'GOLD' : 5,
+    'SILVER' : 6,
+    'BRONZE' : 7,
+    'UNRANKED' : 8,
+    }
+
 class Summoner(ndb.Model):
   """ DB model for summoners. """
   name = ndb.StringProperty()
@@ -308,14 +319,13 @@ class FindMatches(webapp2.RequestHandler):
         ','.join(str(summoner.user_id) for summoner in summoners))
     self.response.out.write('Fetch url: %s<br/>' % url)
     result = urlfetch.fetch(url)
+    id_to_tier = {}
     if result.status_code == 200:
       rc = json.loads(result.content)
       for key in rc:
         for league in rc[key]:
           if league['queue'] == 'RANKED_SOLO_5x5':
-            summoner = Summoner.query(Summoner.user_id==int(key)).fetch(1)[0]
-            summoner.tier = league['tier']
-            summoner.put()
+            id_to_tier[int(key)] = league['tier']
             break
 
     # Find matchs.
@@ -325,8 +335,17 @@ class FindMatches(webapp2.RequestHandler):
         self.response.out.write('Id is missing to summoner: %s<br/>' %
                                 summoner.name)
         continue
-      # TODO: Check summoner tier.
-      # Delete if the tier is lower than some criteria.
+      # Updates summoner tier.
+      # TODO: Delete ummoner f the tier is lower than some criteria.
+      summoner.tier = id_to_tier[summoner.user_id]
+      if summoner.tier not in tier_sort_score:
+        # Unknown tier, just pass now.
+        pass
+      # Only fetches up to 500+ matches per execution.
+      # We can update only 500 matches per 10 minutes.
+      if count > 500:
+        summoner.put()  # Just records new tier.
+        continue
 
       # Fetchs match detail.
       time_cut = (datetime.datetime.now() -  # Weeks ago.
@@ -350,7 +369,6 @@ class FindMatches(webapp2.RequestHandler):
           matchup.put()
           count += 1
         summoner.last_update = datetime.datetime.now()
-        summoner.put()
         self.response.out.write('Updated summoner %s, count = %d.<br/>' % (
             summoner.name, count))
       elif result.status_code == 429:
@@ -360,10 +378,7 @@ class FindMatches(webapp2.RequestHandler):
         summoner.key.delete()
         self.response.out.write('Deleted summoner with match error: %s<br/>' %
                                 summoner.name)
-      # Only fetches up to 2000+ matches per execution.
-      # We can update only 500 matches per 10 minutes.
-      if count > 500:
-        break
+     summoner.put()
 
 class ShowMatches(webapp2.RequestHandler):
   """ Shows matches up to 1000. """
@@ -390,6 +405,7 @@ class UpdateMatches(webapp2.RequestHandler):
   """ Launches 5 match update job for every 10 seconds.
 
   App cron supports 1 minutes, but ACL is controlled by 10 seconds.
+  To maximize the ACL, launch 5 workers for each cron call (once per minutes).
   """
   def get(self):
     for i in xrange(5):
