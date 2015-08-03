@@ -356,7 +356,6 @@ class FindMatches(webapp2.RequestHandler):
       elif result.status_code == 429:
         self.response.out.write('Rate limit exceeded.<br/>')
         time.sleep(10)  # Sleeps 10 seconds to avoid ACL.
-        break
       else:
         summoner.key.delete()
         self.response.out.write('Deleted summoner with match error: %s<br/>' %
@@ -422,7 +421,6 @@ class UpdateMatches(webapp2.RequestHandler):
       elif result.status_code == 429:
         self.response.out.write('Rate limit exceeded.<br/>')
         time.sleep(10)  # Sleeps 10 seconds to avoid ACL.
-        break
       else:
         matchup.key.delete()
     # TODO: Updates new summoners.
