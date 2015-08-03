@@ -299,6 +299,10 @@ class FindMatches(webapp2.RequestHandler):
         self.response.out.write('Id is missing to summoner: %s<br/>' %
                                 summoner.name)
         continue
+      # TODO: Check summoner tier.
+      # Delete if the tier is lower than some criteria.
+
+      # Fetchs match detail.
       time_cut = (datetime.datetime.now() -  # Weeks ago.
                   datetime.timedelta(days=7)).strftime('%s')
       url = url_find_matches % (summoner.user_id, time_cut)

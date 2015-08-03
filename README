@@ -2,3 +2,31 @@ App Engine code for LOL stats.
 
 Use this command to deploy.
 ./appcfg.py -A lol-stats-test update lol_stats
+
+
+Riot API call examples,
+
+Seed (1 time):
+ Find players from featured.
+  https://kr.api.pvp.net/observer-mode/rest/featured?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+  https://kr.api.pvp.net/api/lol/kr/v1.4/summoner/by-name/c1ash?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+  https://kr.api.pvp.net/api/lol/kr/v1.4/summoner/by-name/%EC%96%B4%EC%84%9C%EC%99%80%20%ED%95%91%ED%95%91%EC%95%84?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+
+Find matches:
+ Scan players, find matches, "least recent updated summoner first".
+ Note, matchhistory has detailed info, while matchlist has more matches.
+  https://kr.api.pvp.net/api/lol/kr/v2.2/matchlist/by-summoner/30202240?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+
+Update stats from matches (also players):
+ Note, lane info is in the data.
+  https://kr.api.pvp.net/api/lol/kr/v2.2/match/1995207724?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+
+
+Only 500 calls are allowed in 10 minutes.
+TODO: Calculate champion stats based on the all matches recorded. Do not server
+stats on the fly.
+
+
+TODO: Use tier info to filter or classify stats.
+Get tier:
+  https://kr.api.pvp.net/api/lol/kr/v2.5/league/by-summoner/2077233/entry?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
