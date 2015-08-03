@@ -15,6 +15,7 @@ import webapp2
 
 from collections import defaultdict
 from google.appengine.ext import ndb
+from google.appengine.api import taskqueue
 from google.appengine.api import urlfetch
 from google.appengine.api import users
 
@@ -312,10 +313,9 @@ class FindMatches(webapp2.RequestHandler):
       for key in rc:
         for league in rc[key]:
           if league['queue'] == 'RANKED_SOLO_5x5':
-            summoners_to_update = Summoner.query(Summoner.user_id==int(key))
-            for s in summoners_to_update:
-              s.tier = league['tier']
-              s.put()
+            summoner = Summoner.query(Summoner.user_id==int(key)).fetch(1)[0]
+            summoner.tier = league['tier']
+            summoner.put()
             break
 
     # Find matchs.
@@ -344,7 +344,7 @@ class FindMatches(webapp2.RequestHandler):
           continue
         for match in rc['matches']:
           # Skips already existing matches.
-          if Matchup.query(Matchup.match_id==match['matchId']):
+          if Matchup.query(Matchup.match_id==match['matchId']).count() > 0:
             continue
           matchup = Matchup(match_id = match['matchId'])
           matchup.put()
@@ -387,6 +387,22 @@ class ShowMatches(webapp2.RequestHandler):
     self.response.out.write(response)
 
 class UpdateMatches(webapp2.RequestHandler):
+  """ Launches 5 match update job for every 10 seconds.
+
+  App cron supports 1 minutes, but ACL is controlled by 10 seconds.
+  """
+  def get(self):
+    for i in xrange(5):
+      try:
+        self.response.out.write('Scheduling match update %d<br/>' % i)
+        taskqueue.add(url = '/update_matches_worker',
+                      countdown = i * 10)
+      except (taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError), e:
+        self.response.out.write('taskqueue exception on %d<br/>' % i)
+      except:
+        self.response.out.write('Unknown excpetion on %d<br/>' % i);
+
+class UpdateMatchesWorker(webapp2.RequestHandler):
   """ Fills detail of games. """
   def create_db_string(self, lane, role, win, champion):
     attr = lane
@@ -397,7 +413,7 @@ class UpdateMatches(webapp2.RequestHandler):
 
   def get(self):
     # Updates lane win/lose records.
-    matchups = Matchup.query(Matchup.match_creation == None).fetch(40)
+    matchups = Matchup.query(Matchup.match_creation == None).fetch(10)
     summoner_name_id = {}
     for matchup in matchups:
       url = url_update_match % matchup.match_id
@@ -420,13 +436,12 @@ class UpdateMatches(webapp2.RequestHandler):
               p['player']['summonerName']] = p['player']['summonerId']
       elif result.status_code == 429:
         self.response.out.write('Rate limit exceeded.<br/>')
-        time.sleep(10)  # Sleeps 10 seconds to avoid ACL.
+        time.sleep(5)  # Sleeps 5 seconds to avoid ACL.
       else:
         matchup.key.delete()
     # TODO: Updates new summoners.
     for name, user_id in summoner_name_id.iteritems():
-      found = Summoner.query(Summoner.name == name).fetch(1)
-      if found:
+      if Summoner.query(Summoner.name == name).count() > 0:
         self.response.out.write('Summoner %s is already in DB.<br>' % name)
         continue
       summoner = Summoner(name=name)
@@ -434,6 +449,10 @@ class UpdateMatches(webapp2.RequestHandler):
       summoner.put()
       self.response.out.write(
           'Added %s(%s) to Summoner DB.<br>' % (name, user_id))
+
+  def post(self):
+    # Called by taskqueue.
+    self.get()
 
 class ShowLane(webapp2.RequestHandler):
   """ Shows win/lose statistics per champion.
@@ -589,6 +608,7 @@ app = webapp2.WSGIApplication([
   ('/seed', Seed),  # Find seed summoners from featured games.
   ('/find_matches', FindMatches),
   ('/update_matches', UpdateMatches),
+  ('/update_matches_worker', UpdateMatchesWorker), # Used internally.
   # Internal tools.
   ('/summoners', ShowSummoners),
   ('/matches', ShowMatches),
