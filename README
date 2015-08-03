@@ -1,4 +1,4 @@
 App Engine code for LOL stats.
 
-Use this commane to deploy.
+Use this command to deploy.
 ./appcfg.py -A lol-stats-test update lol_stats
