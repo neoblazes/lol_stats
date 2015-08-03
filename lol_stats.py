@@ -250,7 +250,6 @@ class CleanupSummoners(webapp2.RequestHandler):
         summoner.key.delete()
         self.response.out.write('Deleted dup Name: %s<br/>' % summoner.name)
       else:
-        summoner.key.delete()
         summoner_names.add(summoner.name)
 
 class Matchup(ndb.Model):
