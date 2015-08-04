@@ -18,6 +18,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import taskqueue
 from google.appengine.api import urlfetch
 from google.appengine.api import users
+from google.appengine.datastore.datastore_query import Cursor
 
 import sys
 reload(sys)
@@ -411,7 +412,7 @@ class ShowMatches(webapp2.RequestHandler):
                 matchup.bottom_duo_carry_lose, matchup.bottom_duo_support_lose)
     self.response.out.write(response)
 
-class UpdateMatches(webapp2.RequestHandler):
+class UpdateMatchesCron(webapp2.RequestHandler):
   """ Launches 5 match update job for every 10 seconds.
 
   App cron supports 1 minutes, but ACL is controlled by 10 seconds.
@@ -421,14 +422,15 @@ class UpdateMatches(webapp2.RequestHandler):
     for i in xrange(5):
       try:
         self.response.out.write('Scheduling match update %d<br/>' % i)
-        taskqueue.add(url = '/update_matches_worker',
+        taskqueue.add(url = '/update_matches',
                       countdown = i * 10)
       except (taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError), e:
         self.response.out.write('taskqueue exception on %d<br/>' % i)
       except:
         self.response.out.write('Unknown excpetion on %d<br/>' % i);
+    self.response.out.write('Succeeded!<br/>');
 
-class UpdateMatchesWorker(webapp2.RequestHandler):
+class UpdateMatches(webapp2.RequestHandler):
   """ Fills detail of games. """
   def create_db_string(self, lane, role, win, champion):
     attr = lane
@@ -502,83 +504,19 @@ class ShowLane(webapp2.RequestHandler):
     self.response.out.write(
         '<head><script src="js/sorttable.js"></script></head><body>')
 
+    db_key = lane
     champ = self.request.get("champ")
     if champ:
-      self.PrintChampDetail(lane, champ)
-      return
-    champ_games = {}
-    champ_games = defaultdict(lambda: 0, champ_games)
-    champ_win = {}
-    champ_win = defaultdict(lambda: 0, champ_win)
-    matchups = Matchup.query()
-    for matchup in matchups:
-      exec 'win_champ = matchup.%s_win' % lane
-      exec 'lose_champ = matchup.%s_lose' % lane
-      champ_games[win_champ] += 1
-      champ_games[lose_champ] += 1
-      champ_win[win_champ] += 1
+      for id, name in champ_name_map.iteritems():
+        if champ == name:
+          db_key = '%s_%s' % (lane, id)
+          break
 
-    # Print champ stats.
-    self.response.out.write(
-        '<table class="sortable"><thead><tr><th>Champ</th><th>Games</th>'
-        '<th>Win</th><th>Lose</th><th>Ratio</th></tr></thead><tbody>')
-    for champ in sorted(champ_games, key=champ_games.get, reverse=True):
-      if not champ:
-        continue
-      games = champ_games[champ]
-      win = champ_win[champ]
-      lose = games - win
-      self.response.out.write(
-          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td><td>%d%%</td></tr>'
-          % (self.ChampWithLink(lane, champ), games, win, lose,
-             (win * 100) / games))
-    self.response.out.write('</tbody></table></body></html>')
-
-  def PrintChampDetail(self, lane, champ_name):
-    champ = None
-    for id, name in champ_name_map.iteritems():
-      if champ_name == name:
-        champ = id
-        break
-    if not champ:
-      self.response.out.write('Invalid champ name, %s != %s' % (champ_name, champ_name_map[98]))
-      return
-    champ_games = {}
-    champ_games = defaultdict(lambda: 0, champ_games)
-    win_against = {}
-    win_against = defaultdict(lambda: 0, win_against)
-
-    exec 'matchups = Matchup.query(Matchup.%s_win == %s)' % (lane, champ)
-    for matchup in matchups:
-      exec 'lose_champ = matchup.%s_lose' % lane
-      champ_games[lose_champ] += 1
-      win_against[lose_champ] += 1
-
-    exec 'matchups = Matchup.query(Matchup.%s_lose == %s)' % (lane, champ)
-    for matchup in matchups:
-      exec 'win_champ = matchup.%s_win' % lane
-      champ_games[win_champ] += 1
-
-    # Print champ stats.
-    self.response.out.write(
-        '<table class="sortable"><thead><tr><th>Against</th><th>Games</th>'
-        '<th>Win</th><th>Lose</th><th>Ratio</th></tr></thead><tbody>')
-    for against in sorted(champ_games, key=champ_games.get, reverse=True):
-      if not against:
-        continue
-      games = champ_games[against]
-      win = win_against[against]
-      lose = games - win
-      self.response.out.write(
-          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td><td>%d%%</td></tr>'
-          % (self.ChampWithLink(lane, against), games, win, lose,
-             (win * 100) / games))
-    self.response.out.write('</tbody></table></body></html>')
-
-  def ChampWithLink(self, lane, champ):
-    name = champ_name_map[champ]
-    return '<a href="/lane?lane=%s&champ=%s">%s</a>' % (lane, name, name)
-
+    cache = ResultCache.query(ResultCache.request == db_key).fetch(1)
+    if len(cache) >= 1:
+      self.response.out.write(cache[0].response)
+    else:
+      self.response.out.write('DB not found.')
 
 class PrintChampions(webapp2.RequestHandler):
   """ Prints champion names map in Python code format. """
@@ -612,29 +550,179 @@ class CleanUpMatches(webapp2.RequestHandler):
           matchup.match_id, time.gmtime(matchup.match_creation / 1000)))
       matchup.key.delete()
 
+class ResultCache(ndb.Model):
+  """ DB model for result pages. """
+  request = ndb.StringProperty()
+  lane = ndb.StringProperty()
+  champ = ndb.StringProperty()
+  response = ndb.TextProperty()
+  last_update = ndb.DateTimeProperty()
+
+class BuildResultPages(webapp2.RequestHandler):
+  """ Build result pages and store to cache DB. """
+  def get(self):
+    # Build main page.
+    analyzed = self.AnalyzeMatches()
+    self.BuildMainPage(analyzed)
+
+  def BuildMainPage(self, analyzed):
+    response = (
+        'Welcome to LOL stats, select lane to see.<br/>'
+        '<a href="/lane?lane=top">Top</a><br/>'
+        '<a href="/lane?lane=middle">Middle</a><br/>'
+        '<a href="/lane?lane=jungle">Jungle</a><br/>'
+        '<a href="/lane?lane=bottom_duo_carry">Bottom Dou Carry</a><br/>'
+        '<a href="/lane?lane=bottom_duo_support">Bottom Dou Support</a><br/>')
+    response += (
+        '<br/>Collected %d summoners and %d/%d matches analyzed.<br/>' % (
+        Summoner.query().count(), analyzed, Matchup.query().count()))
+    response += self.GetTimestamp()
+
+    cache = ResultCache.query(ResultCache.request == '/').fetch(1)
+    if len(cache) < 1:
+      cache = [ResultCache(request='/')]
+    cache[0].response = response
+    cache[0].put()
+    self.response.out.write('Built main page.<br/>')
+
+  def AnalyzeMatches(self):
+    lanes = ['top', 'middle', 'jungle',
+             'bottom_duo_carry', 'bottom_duo_support']
+
+    champ_games = defaultdict(lambda: defaultdict(int))
+    champ_win = defaultdict(lambda: defaultdict(int))
+    champ_vs_games = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    champ_vs_win = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+
+    self.response.out.write('Analyzing all matches...<br/>')
+    analyzed = 0
+    curs = Cursor()
+    while True:
+      # Breaks down the record into pieces to avoid timeout.
+      matchups, curs, more = Matchup.query().fetch_page(5000,
+                                                        start_cursor=curs)
+      for matchup in matchups:
+        if not matchup.match_creation:
+          continue
+        analyzed += 1
+        for lane in lanes:
+          win_champ = getattr(matchup, '%s_win' % lane)
+          lose_champ = getattr(matchup, '%s_lose' % lane)
+          champ_games[lane][win_champ] += 1
+          champ_games[lane][lose_champ] += 1
+          champ_win[lane][win_champ] += 1
+          champ_vs_games[lane][win_champ][lose_champ] += 1
+          champ_vs_games[lane][lose_champ][win_champ] += 1
+          champ_vs_win[lane][win_champ][lose_champ] += 1
+      if not(more and curs):
+        break
+    for lane in lanes:
+      self.BuildLanePage(lane, champ_games[lane], champ_win[lane])
+    for lane in lanes:
+      for champ in champ_vs_games[lane]:
+        self.BuildLaneChampPage(
+            lane, champ, champ_games[lane][champ], champ_win[lane][champ],
+            champ_vs_games[lane][champ], champ_vs_win[lane][champ])
+    return analyzed
+
+  def BuildLanePage(self, lane, champ_games, champ_win):
+    response = (
+        '<table class="sortable"><thead><tr><th>Champ</th><th>Games</th>'
+        '<th>Win</th><th>Lose</th><th>Ratio</th></tr></thead><tbody>')
+    for champ in sorted(champ_games, key=champ_games.get, reverse=True):
+      if not champ:
+        continue
+      games = champ_games[champ]
+      win = champ_win[champ]
+      lose = games - win
+      response += (
+          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td><td>%d%%</td></tr>'
+          % (self.ChampWithLink(lane, champ), games, win, lose,
+             (win * 100) / games))
+    response += ('</tbody></table>')
+    response += self.GetTimestamp()
+    response += ('</body></html>')
+
+    cache = ResultCache.query(ResultCache.request == lane).fetch(1)
+    if len(cache) < 1:
+      cache = [ResultCache(request=lane)]
+    cache[0].response = response
+    cache[0].put()
+    self.response.out.write('Built page for lane %s.<br/>' % lane)
+
+  def BuildLaneChampPage(self, lane, champ, games, win, champ_games, champ_win):
+    if champ not in champ_name_map:
+      return
+    response = (
+        '<table class="sortable"><thead><tr><th>Against</th><th>Games</th>'
+        '<th>Win</th><th>Lose</th><th>Ratio</th></tr></thead><tbody>'
+        'Champ: %s (%s) Games: %d Win: %d Lose: %d Ratio: %d%%<br/><br/>' %
+        (champ_name_map[champ], lane,
+         games, win, games - win, (win * 100) / games))
+    for against in sorted(champ_games, key=champ_games.get, reverse=True):
+      if not against:
+        continue
+      games = champ_games[against]
+      win = champ_win[against]
+      lose = games - win
+      response += (
+          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td><td>%d%%</td></tr>'
+          % (self.ChampWithLink(lane, against), games, win, lose,
+             (win * 100) / games))
+    response += ('</tbody></table>')
+    response += self.GetTimestamp()
+    response += ('</body></html>')
+
+    db_key = '%s_%s' % (lane, champ)
+    cache = ResultCache.query(ResultCache.request == db_key).fetch(1)
+    if len(cache) < 1:
+      cache = [ResultCache(request=db_key)]
+    cache[0].response = response
+    cache[0].put()
+    self.response.out.write(
+        'Built page for lane %s, champ %s.<br/>' %
+        (lane, champ_name_map[champ]))
+
+  def ChampWithLink(self, lane, champ):
+    name = champ_name_map[champ]
+    return '<a href="/lane?lane=%s&champ=%s">%s</a>' % (lane, name, name)
+
+  def GetTimestamp(self):
+    return ('<br/>Updated: %s<br/>' %
+            datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
+
+  def post(self):
+    # Called by taskqueue.
+    self.get()
+
+class BuildResultPagesCron(webapp2.RequestHandler):
+  """ Launches a BuildResultPages task. """
+  def get(self):
+    try:
+      self.response.out.write('Scheduling build result page.<br/>')
+      taskqueue.add(url = '/build_result_pages')
+    except (taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError), e:
+      self.response.out.write('taskqueue exception<br/>')
+    except:
+      self.response.out.write('Unknown excpetion<br/>');
+    self.response.out.write('Succeeded!<br/>');
+
 class Main(webapp2.RequestHandler):
   """ Main links. """
   def get(self):
-    self.response.out.write('Welcome to LOL stats, select lane to see.<br/>')
-    self.response.out.write('<a href="/lane?lane=top">Top</a><br/>')
-    self.response.out.write('<a href="/lane?lane=middle">Middle</a><br/>')
-    self.response.out.write('<a href="/lane?lane=jungle">Jungle</a><br/>')
-    self.response.out.write(
-        '<a href="/lane?lane=bottom_duo_carry">Bottom Dou Carry</a><br/>')
-    self.response.out.write(
-        '<a href="/lane?lane=bottom_duo_support">Bottom Dou Support</a><br/>')
-    self.response.out.write(
-        'Collected %d summoners and %d/%d matches analyzed.<br/>' % (
-            Summoner.query().count(),
-            Matchup.query(Matchup.match_creation != None).count(),
-            Matchup.query().count()))
+    cache = ResultCache.query(ResultCache.request == '/').fetch(1)
+    if len(cache) >= 1:
+      self.response.out.write(cache[0].response)
 
 app = webapp2.WSGIApplication([
-  # Update commands.
+  # Crawl commands.
   ('/seed', Seed),  # Find seed summoners from featured games.
   ('/find_matches', FindMatches),
-  ('/update_matches', UpdateMatches),
-  ('/update_matches_worker', UpdateMatchesWorker), # Used internally.
+  ('/update_matches_cron', UpdateMatchesCron),
+  ('/update_matches', UpdateMatches), # Used internally.
+  # Analyze commands.
+  ('/build_result_pages_cron', BuildResultPagesCron),
+  ('/build_result_pages', BuildResultPages),
   # Internal tools.
   ('/summoners', ShowSummoners),
   ('/matches', ShowMatches),
