@@ -562,8 +562,6 @@ class CleanUpMatches(webapp2.RequestHandler):
 class ResultCache(ndb.Model):
   """ DB model for result pages. """
   request = ndb.StringProperty()
-  lane = ndb.StringProperty()
-  champ = ndb.StringProperty()
   response = ndb.TextProperty()
   last_update = ndb.DateTimeProperty()
 
