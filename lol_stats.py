@@ -560,7 +560,12 @@ class CleanUpMatches(webapp2.RequestHandler):
       matchup.key.delete()
 
 class ResultCache(ndb.Model):
-  """ DB model for result pages. """
+  """ DB model for result pages.
+  Type of request,
+    '/': main
+    'top' : lane=top
+    'top_1' : lane=top&champ=1
+  """
   request = ndb.StringProperty()
   response = ndb.TextProperty()
   last_update = ndb.DateTimeProperty()
