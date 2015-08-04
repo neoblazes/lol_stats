@@ -251,29 +251,9 @@ class Seed(webapp2.RequestHandler):
 class ShowSummoners(webapp2.RequestHandler):
   """ Shows all summoners. """
   def get(self):
-    tier_count = defaultdict(int)
-    curs = Cursor()
-    while True:
-      # Breaks down the record into pieces to avoid timeout.
-      summoners, curs, more = (
-          Summoner.query().fetch_page(5000, start_cursor=curs))
-      for summoner in summoners:
-        tier_count[summoner.tier] += 1
-      if not(more and curs):
-        break
-
-    self.response.out.write('Totoal %d summoners<br/>' %
-                            Summoner.query().count())
-    for tier in tier_count:
-      self.response.out.write(
-          'Tier: %s Count: %d<br/>' % (tier, tier_count[tier]))
-
-    summoners = Summoner.query().order(Summoner.name).fetch(1000)
-    for summoner in summoners:
-      self.response.out.write(
-          'Name: %s, Id: %s, Tier: %s, Updated: %s<br/>' % (
-          summoner.name, summoner.user_id, summoner.tier,
-          summoner.last_update))
+    cache = ResultCache.query(ResultCache.request == 'summoners').fetch(1)
+    if len(cache) >= 1:
+      self.response.out.write(cache[0].response)
 
 class CleanupSummoners(webapp2.RequestHandler):
   """ Removes duplicated summoners. """
@@ -599,28 +579,25 @@ class ResultCache(ndb.Model):
 class BuildResultPages(webapp2.RequestHandler):
   """ Build result pages and store to cache DB. """
   def get(self):
-    # Build main page.
+    self.BuildSummonersPage()
     analyzed = self.AnalyzeMatches()
     self.BuildMainPage(analyzed)
 
   def BuildMainPage(self, analyzed):
     response = (
-        'Welcome to LOL stats, select lane to see.<br/>'
+        'Welcome to LOL stats, select lane to see.<br/><br/>'
         '<a href="/lane?lane=top">Top</a><br/>'
         '<a href="/lane?lane=middle">Middle</a><br/>'
         '<a href="/lane?lane=jungle">Jungle</a><br/>'
         '<a href="/lane?lane=bottom_duo_carry">Bottom Dou Carry</a><br/>'
         '<a href="/lane?lane=bottom_duo_support">Bottom Dou Support</a><br/>')
     response += (
-        '<br/>Collected %d summoners and %d/%d matches analyzed.<br/>' % (
-        Summoner.query().count(), analyzed, Matchup.query().count()))
+        '<br/>Collected %d KR summoners '
+        'and analyzed %d / %d PLATINUM+ matches.<br/>' %
+        (Summoner.query().count(), analyzed, Matchup.query().count()))
     response += self.GetTimestamp()
 
-    cache = ResultCache.query(ResultCache.request == '/').fetch(1)
-    if len(cache) < 1:
-      cache = [ResultCache(request='/')]
-    cache[0].response = response
-    cache[0].put()
+    self.AddOrUpdateResponse('/', response)
     self.response.out.write('Built main page.<br/>')
 
   def AnalyzeMatches(self):
@@ -681,11 +658,7 @@ class BuildResultPages(webapp2.RequestHandler):
     response += self.GetTimestamp()
     response += ('</body></html>')
 
-    cache = ResultCache.query(ResultCache.request == lane).fetch(1)
-    if len(cache) < 1:
-      cache = [ResultCache(request=lane)]
-    cache[0].response = response
-    cache[0].put()
+    self.AddOrUpdateResponse(lane, response)
     self.response.out.write('Built page for lane %s.<br/>' % lane)
 
   def BuildLaneChampPage(self, lane, champ, games, win, champ_games, champ_win):
@@ -711,15 +684,44 @@ class BuildResultPages(webapp2.RequestHandler):
     response += self.GetTimestamp()
     response += ('</body></html>')
 
-    db_key = '%s_%s' % (lane, champ)
-    cache = ResultCache.query(ResultCache.request == db_key).fetch(1)
-    if len(cache) < 1:
-      cache = [ResultCache(request=db_key)]
-    cache[0].response = response
-    cache[0].put()
+    self.AddOrUpdateResponse('%s_%s' % (lane, champ), response)
     self.response.out.write(
         'Built page for lane %s, champ %s.<br/>' %
         (lane, champ_name_map[champ]))
+
+  def BuildSummonersPage(self):
+    tier_to_collect = ['CHALLENGER', 'MASTER', 'DIAMOND', 'PLATINUM']
+    tier_count = defaultdict(int)
+    for cur_tier in tier_to_collect:
+      curs = Cursor()
+      while True:
+        # Breaks down the record into pieces to avoid timeout.
+        summoners, curs, more = (
+            Summoner.query(Summoner.tier == cur_tier).
+            fetch_page(5000, keys_only=True, start_cursor=curs))
+        tier_count[cur_tier] += len(summoners)
+        if not(more and curs):
+          break
+    response = 'Totoal %d summoners<br/>' % Summoner.query().count()
+    for tier in tier_count:
+      response += 'Tier: %s Count: %d<br/>' % (tier, tier_count[tier])
+
+    response += self.GetTimestamp()
+    summoners = Summoner.query().order(Summoner.name).fetch(1000)
+    for summoner in summoners:
+      response += (
+          'Name: %s, Id: %s, Tier: %s, Updated: %s<br/>' % (
+          summoner.name, summoner.user_id, summoner.tier,
+          summoner.last_update))
+    self.AddOrUpdateResponse('summoners', response)
+    self.response.out.write('Built summoners page.<br/>')
+
+  def AddOrUpdateResponse(self, request, response):
+    cache = ResultCache.query(ResultCache.request == request).fetch(1)
+    if len(cache) < 1:
+      cache = [ResultCache(request=request)]
+    cache[0].response = response
+    cache[0].put()
 
   def ChampWithLink(self, lane, champ):
     name = champ_name_map[champ]
