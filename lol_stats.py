@@ -305,7 +305,7 @@ class FindMatches(webapp2.RequestHandler):
       self.response.out.write(
           'More than 1000 matches are waiting for update. ' +
           'Will not find more.<br/>');
-      return
+      #return
 
     summoners = Summoner.query(
         ndb.OR(Summoner.last_update == None,
@@ -336,6 +336,12 @@ class FindMatches(webapp2.RequestHandler):
       if not summoner.user_id:
         self.response.out.write('Id is missing to summoner: %s<br/>' %
                                 summoner.name)
+        continue
+      # Updates summoner tier.
+      if summoner.user_id not in id_to_tier:
+        self.response.out.write('Drop player never played rank, %s.<br/>' %
+                                summoner.name)
+        summoner.key.delete()
         continue
       # Updates summoner tier.
       summoner.tier = id_to_tier[summoner.user_id]
@@ -373,6 +379,9 @@ class FindMatches(webapp2.RequestHandler):
               summoner.name)
           continue
         for match in rc['matches']:
+          # Skips non rank solo games.
+          if match['queue'] != 'RANKED_SOLO_5x5':
+            continue
           # Skips already existing matches.
           if Matchup.query(Matchup.match_id==match['matchId']).count() > 0:
             continue
