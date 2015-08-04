@@ -651,9 +651,10 @@ class BuildResultPages(webapp2.RequestHandler):
       win = champ_win[champ]
       lose = games - win
       response += (
-          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td><td>%d%%</td></tr>'
+          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>'
+          '<td>%0.2f%%</td></tr>'
           % (self.ChampWithLink(lane, champ), games, win, lose,
-             (win * 1000) / games / 10))
+             float(win * 100) / games))
     response += ('</tbody></table>')
     response += self.GetTimestamp()
     response += ('</body></html>')
@@ -667,9 +668,9 @@ class BuildResultPages(webapp2.RequestHandler):
     response = (
         '<table class="sortable"><thead><tr><th>Against</th><th>Games</th>'
         '<th>Win</th><th>Lose</th><th>Ratio</th></tr></thead><tbody>'
-        'Champ: %s (%s) Games: %d Win: %d Lose: %d Ratio: %d%%<br/><br/>' %
+        'Champ: %s (%s) Games: %d Win: %d Lose: %d Ratio: %0.2f%%<br/><br/>' %
         (champ_name_map[champ], lane,
-         games, win, games - win, (win * 100) / games / 10))
+         games, win, games - win, float(win * 1000) / games))
     for against in sorted(champ_games, key=champ_games.get, reverse=True):
       if not against:
         continue
@@ -677,9 +678,9 @@ class BuildResultPages(webapp2.RequestHandler):
       win = champ_win[against]
       lose = games - win
       response += (
-          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td><td>%d%%</td></tr>'
+          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td><td>%0.2f%%</td></tr>'
           % (self.ChampWithLink(lane, against), games, win, lose,
-             (win * 1000) / games / 10))
+             float(win * 100) / games))
     response += ('</tbody></table>')
     response += self.GetTimestamp()
     response += ('</body></html>')
