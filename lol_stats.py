@@ -251,9 +251,24 @@ class Seed(webapp2.RequestHandler):
 class ShowSummoners(webapp2.RequestHandler):
   """ Shows all summoners. """
   def get(self):
+    tier_count = defaultdict(int)
+    curs = Cursor()
+    while True:
+      # Breaks down the record into pieces to avoid timeout.
+      summoners, curs, more = (
+          Summoner.query().fetch_page(5000, start_cursor=curs))
+      for summoner in summoners:
+        tier_count[summoner.tier] += 1
+      if not(more and curs):
+        break
+
     self.response.out.write('Totoal %d summoners<br/>' %
                             Summoner.query().count())
-    summoners = Summoner.query().order(Summoner.name)
+    for tier in tier_count:
+      self.response.out.write(
+          'Tier: %s Count: %d<br/>' % (tier, tier_count[tier]))
+
+    summoners = Summoner.query().order(Summoner.name).fetch(1000)
     for summoner in summoners:
       self.response.out.write(
           'Name: %s, Id: %s, Tier: %s, Updated: %s<br/>' % (
@@ -589,17 +604,6 @@ class BuildResultPages(webapp2.RequestHandler):
     self.BuildMainPage(analyzed)
 
   def BuildMainPage(self, analyzed):
-    tier_count = defaultdict(int)
-    curs = Cursor()
-    while True:
-      # Breaks down the record into pieces to avoid timeout.
-      summoners, curs, more = (
-          Summoner.query().fetch_page(5000, start_cursor=curs))
-      for summoner in summoners:
-        tier_count[summoner.tier] += 1
-      if not(more and curs):
-        break
-
     response = (
         'Welcome to LOL stats, select lane to see.<br/>'
         '<a href="/lane?lane=top">Top</a><br/>'
@@ -610,11 +614,6 @@ class BuildResultPages(webapp2.RequestHandler):
     response += (
         '<br/>Collected %d summoners and %d/%d matches analyzed.<br/>' % (
         Summoner.query().count(), analyzed, Matchup.query().count()))
-    for tier in tier_count:
-      if tier:
-        response += ' Tier: %s Count: %d<br/>' % (tier, tier_count[tier])
-      else:
-        response += ' Not processed: %d<br/>' % tier_count[tier]
     response += self.GetTimestamp()
 
     cache = ResultCache.query(ResultCache.request == '/').fetch(1)
