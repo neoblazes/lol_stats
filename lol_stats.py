@@ -339,9 +339,9 @@ class FindMatches(webapp2.RequestHandler):
         continue
       # Updates summoner tier.
       if summoner.user_id not in id_to_tier:
-        self.response.out.write('Drop player never played rank, %s.<br/>' %
+        # Do not delete because it can be an ACL issue.
+        self.response.out.write('Skipping player has no rank record, %s.<br/>' %
                                 summoner.name)
-        summoner.key.delete()
         continue
       # Updates summoner tier.
       summoner.tier = id_to_tier[summoner.user_id]
@@ -349,7 +349,7 @@ class FindMatches(webapp2.RequestHandler):
                               (summoner.name, summoner.tier))
       if (summoner.tier not in tier_sort_score or
           tier_sort_score[summoner.tier] < tier_PLATINUM):
-        self.response.out.write('Drop low ranked player, %s (%s).<br/>' %
+        self.response.out.write('Drops low ranked player, %s (%s).<br/>' %
                                 (summoner.name, summoner.tier))
         # Drops players lower than PLATINUM.
         # The matches still can contain records for non PLATINUM users.
@@ -372,10 +372,10 @@ class FindMatches(webapp2.RequestHandler):
       result = urlfetch.fetch(url)
       if result.status_code == 200:
         rc = json.loads(result.content)
-        if not rc['matches']:
+        if 'matches' not in rc:
           summoner.key.delete()
           self.response.out.write(
-              'Deleted summoner having no matches recently<br/>' %
+              'Deleted summoner having no matches recently, %s<br/>' %
               summoner.name)
           continue
         for match in rc['matches']:
