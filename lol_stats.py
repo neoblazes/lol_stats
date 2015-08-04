@@ -263,17 +263,20 @@ class ShowSummoners(webapp2.RequestHandler):
 class CleanupSummoners(webapp2.RequestHandler):
   """ Removes duplicated summoners. """
   def get(self):
-    ndb.delete_multi(Summoner.query(
-        Summoner.last_update == None).iter(keys_only=True))
-
     summoner_names = set()
-    summoners = Summoner.query()
-    for summoner in summoners:
-      if summoner.name in summoner_names:
-        summoner.key.delete()
-        self.response.out.write('Deleted dup Name: %s<br/>' % summoner.name)
-      else:
-        summoner_names.add(summoner.name)
+    curs = Cursor()
+    while True:
+      # Breaks down the record into pieces to avoid timeout.
+      summoners, curs, more = (
+          Summoner.query().fetch_page(5000, start_cursor=curs))
+      for summoner in summoners:
+        if summoner.name in summoner_names:
+          summoner.key.delete()
+          self.response.out.write('Deleted dup Name: %s<br/>' % summoner.name)
+        else:
+          summoner_names.add(summoner.name)
+      if not(more and curs):
+        break
 
 class Matchup(ndb.Model):
   """ DB model for matchups. """
@@ -448,6 +451,13 @@ class UpdateMatches(webapp2.RequestHandler):
     attr += '_WIN' if win else '_LOSE'
     return 'matchup.%s = %d' % (attr.lower(), champion)
 
+  def get_attr_str(self, lane, role, win):
+    attr = lane
+    if lane == 'BOTTOM':
+      attr += ('_' + role)
+    attr += '_WIN' if win else '_LOSE'
+    return attr.lower()
+
   def get(self):
     # Updates lane win/lose records.
     matchups = Matchup.query(Matchup.match_creation == None).fetch(10)
@@ -459,11 +469,12 @@ class UpdateMatches(webapp2.RequestHandler):
       if result.status_code == 200:
         rc = json.loads(result.content)
         for participant in rc['participants']:
-          cmd = self.create_db_string(
+          attr = self.get_attr_str(
               participant['timeline']['lane'], participant['timeline']['role'],
-              participant['stats']['winner'], participant['championId'])
-          self.response.out.write('%s<br/>' % cmd)
-          exec cmd
+              participant['stats']['winner'])
+          champ = participant['championId']
+          self.response.out.write('%s = %s<br/>' % (attr, champ))
+          setattr(matchup, attr, champ)
         matchup.match_creation = rc['matchCreation']
         matchup.put()
 
@@ -578,6 +589,17 @@ class BuildResultPages(webapp2.RequestHandler):
     self.BuildMainPage(analyzed)
 
   def BuildMainPage(self, analyzed):
+    tier_count = defaultdict(int)
+    curs = Cursor()
+    while True:
+      # Breaks down the record into pieces to avoid timeout.
+      summoners, curs, more = (
+          Summoner.query().fetch_page(5000, start_cursor=curs))
+      for summoner in summoners:
+        tier_count[summoner.tier] += 1
+      if not(more and curs):
+        break
+
     response = (
         'Welcome to LOL stats, select lane to see.<br/>'
         '<a href="/lane?lane=top">Top</a><br/>'
@@ -588,6 +610,11 @@ class BuildResultPages(webapp2.RequestHandler):
     response += (
         '<br/>Collected %d summoners and %d/%d matches analyzed.<br/>' % (
         Summoner.query().count(), analyzed, Matchup.query().count()))
+    for tier in tier_count:
+      if tier:
+        response += ' Tier: %s Count: %d<br/>' % (tier, tier_count[tier])
+      else:
+        response += ' Not processed: %d<br/>' % tier_count[tier]
     response += self.GetTimestamp()
 
     cache = ResultCache.query(ResultCache.request == '/').fetch(1)
@@ -611,8 +638,8 @@ class BuildResultPages(webapp2.RequestHandler):
     curs = Cursor()
     while True:
       # Breaks down the record into pieces to avoid timeout.
-      matchups, curs, more = Matchup.query().fetch_page(5000,
-                                                        start_cursor=curs)
+      matchups, curs, more = (
+          Matchup.query().fetch_page(5000, start_cursor=curs))
       for matchup in matchups:
         if not matchup.match_creation:
           continue
