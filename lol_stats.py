@@ -297,19 +297,39 @@ class FindMatches(webapp2.RequestHandler):
   It will do nothing if there are more than 1000 games waiting for 'update'.
   """
   def get(self):
+    # There is limit control inside find_match() function.
+    # So it's fine to call the function multiple times.
+
+    # Finds new summoner first.
+    self.response.out.write('Finding matches from new summoners.<br/>')
+    if not self.find_match(0):  # 0 means only new.
+      # Finds old summoners next.
+      self.response.out.write(
+          'Finding matches from 1 week old summoners.<br/>')
+      if not self.find_match(7):
+        # Finds recent summoners at last.
+        self.response.out.write(
+            'Finding matches from 1 day old summoners.<br/>')
+        self.find_match(1)
+
+  def find_match(self, days_delta):
+    """ Returns True when it's full. """
     not_updated_matchups = Matchup.query(
         Matchup.match_creation == None).fetch(1000)
     if len(not_updated_matchups) >= 1000:
       self.response.out.write(
           'More than 1000 matches are waiting for update. ' +
           'Will not find more.<br/>');
-      #return
+      return True
 
-    summoners = Summoner.query(
-        ndb.OR(Summoner.last_update == None,
-               Summoner.last_update < (
-                   datetime.datetime.now() - datetime.timedelta(hours=24))
-               )).fetch(10)
+    if days_delta == 0:
+      summoners = Summoner.query(Summoner.last_update == None).fetch(10)
+    else:
+      summoners = Summoner.query(
+          ndb.OR(Summoner.last_update == None,
+                 Summoner.last_update < (datetime.datetime.now() -
+                                         datetime.timedelta(days=days_delta))
+                 )).fetch(10)
     if not summoners:
       self.response.out.write('No summoner to update match.');
       return
