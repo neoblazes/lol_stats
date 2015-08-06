@@ -278,16 +278,16 @@ class Matchup(ndb.Model):
   match_id = ndb.IntegerProperty()
   match_creation = ndb.IntegerProperty()
   # Chanpions per lane.
-  top_win = ndb.IntegerProperty()
-  top_lose = ndb.IntegerProperty()
-  middle_win = ndb.IntegerProperty()
-  middle_lose = ndb.IntegerProperty()
-  jungle_win = ndb.IntegerProperty()
-  jungle_lose = ndb.IntegerProperty()
-  bottom_duo_carry_win = ndb.IntegerProperty()
-  bottom_duo_carry_lose = ndb.IntegerProperty()
-  bottom_duo_support_win = ndb.IntegerProperty()
-  bottom_duo_support_lose = ndb.IntegerProperty()
+  top_win = ndb.IntegerProperty(indexed=False)
+  top_lose = ndb.IntegerProperty(indexed=False)
+  middle_win = ndb.IntegerProperty(indexed=False)
+  middle_lose = ndb.IntegerProperty(indexed=False)
+  jungle_win = ndb.IntegerProperty(indexed=False)
+  jungle_lose = ndb.IntegerProperty(indexed=False)
+  bottom_duo_carry_win = ndb.IntegerProperty(indexed=False)
+  bottom_duo_carry_lose = ndb.IntegerProperty(indexed=False)
+  bottom_duo_support_win = ndb.IntegerProperty(indexed=False)
+  bottom_duo_support_lose = ndb.IntegerProperty(indexed=False)
 
 class FindMatches(webapp2.RequestHandler):
   """ Finds matches by listing games for summoners.
@@ -303,7 +303,8 @@ class FindMatches(webapp2.RequestHandler):
     # Finds new summoner first.
     self.response.out.write('Finding matches from new summoners.<br/>')
     if not self.find_match(0):  # 0 means only new.
-      # Finds old summoners next.
+      # Finds old summoners next. Note that new summoners always
+      # can be picked on any steps.
       self.response.out.write(
           'Finding matches from 1 week old summoners.<br/>')
       if not self.find_match(7):
@@ -335,18 +336,27 @@ class FindMatches(webapp2.RequestHandler):
       return
 
     # Updates summoners' tiers.
-    url = url_summoner_detail_by_id % (
-        ','.join(str(summoner.user_id) for summoner in summoners))
-    self.response.out.write('Fetch url: %s<br/>' % url)
-    result = urlfetch.fetch(url)
-    id_to_tier = {}
-    if result.status_code == 200:
-      rc = json.loads(result.content)
-      for key in rc:
-        for league in rc[key]:
-          if league['queue'] == 'RANKED_SOLO_5x5':
-            id_to_tier[int(key)] = league['tier']
-            break
+    # Try up to 5 times because tier info is important to
+    # decide whether keep or drop summoners.
+    for _ in xrange(5):
+      url = url_summoner_detail_by_id % (
+          ','.join(str(summoner.user_id) for summoner in summoners))
+      self.response.out.write('Fetch url: %s<br/>' % url)
+      result = urlfetch.fetch(url)
+      id_to_tier = {}
+      if result.status_code == 200:
+        rc = json.loads(result.content)
+        for key in rc:
+          for league in rc[key]:
+            if league['queue'] == 'RANKED_SOLO_5x5':
+              id_to_tier[int(key)] = league['tier']
+              break
+        break
+      elif result.status_code == 429:
+        time.sleep(3)  # Sleeps 3 seconds to avoid ACL.
+      else:
+        self.response.out.write('API server error.<br/>')
+        return
 
     # Find matchs.
     count = 0
@@ -358,8 +368,9 @@ class FindMatches(webapp2.RequestHandler):
       # Updates summoner tier.
       if summoner.user_id not in id_to_tier:
         # Do not delete because it can be an ACL issue.
-        self.response.out.write('Skipping player has no rank record, %s.<br/>' %
-                                summoner.name)
+        self.response.out.write(
+            'Deletes player having no rank record, %s.<br/>' % summoner.name)
+        summoner.key.delete()
         continue
       # Updates summoner tier.
       summoner.tier = id_to_tier[summoner.user_id]
@@ -367,9 +378,9 @@ class FindMatches(webapp2.RequestHandler):
                               (summoner.name, summoner.tier))
       if (summoner.tier not in tier_sort_score or
           tier_sort_score[summoner.tier] < tier_PLATINUM):
-        self.response.out.write('Drops low ranked player, %s (%s).<br/>' %
+        self.response.out.write('Deletes low ranked player, %s (%s).<br/>' %
                                 (summoner.name, summoner.tier))
-        # Drops players lower than PLATINUM.
+        # Deletes players lower than PLATINUM.
         # The matches still can contain records for non PLATINUM users.
         # This records are for PLATINUM and who played againt PLATINUM,
         # who maybe are high rators in GOLD tier.
@@ -411,7 +422,7 @@ class FindMatches(webapp2.RequestHandler):
             summoner.name, count))
       elif result.status_code == 429:
         self.response.out.write('Rate limit exceeded.<br/>')
-        time.sleep(10)  # Sleeps 10 seconds to avoid ACL.
+        time.sleep(3)  # Sleeps 3 seconds to avoid ACL.
       else:
         summoner.key.delete()
         self.response.out.write('Deleted summoner with match error: %s<br/>' %
@@ -499,10 +510,10 @@ class UpdateMatches(webapp2.RequestHandler):
               p['player']['summonerName']] = p['player']['summonerId']
       elif result.status_code == 429:
         self.response.out.write('Rate limit exceeded.<br/>')
-        time.sleep(5)  # Sleeps 5 seconds to avoid ACL.
+        time.sleep(3)  # Sleeps 3 seconds to avoid ACL.
       else:
         matchup.key.delete()
-    # TODO: Updates new summoners.
+    # Updates new summoners.
     for name, user_id in summoner_name_id.iteritems():
       if Summoner.query(Summoner.name == name).count() > 0:
         self.response.out.write('Summoner %s is already in DB.<br>' % name)
