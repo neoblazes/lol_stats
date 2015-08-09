@@ -588,13 +588,18 @@ class CleanUpMatches(webapp2.RequestHandler):
   def get(self):
     time_cut = (datetime.datetime.now() -
                 datetime.timedelta(days=7)).strftime('%s') + '000'
-    old_matchups = Matchup.query(
+    curs = Cursor()
+    while True:
+      # Breaks down the record into pieces to avoid timeout.
+      old_matchups, curs, more = (
         ndb.AND(Matchup.match_creation != None,
-                Matchup.match_creation < int(time_cut)))
-    for matchup in old_matchups:
-      self.response.out.write('Found old match, %s, %s<br>' % (
+                Matchup.match_creation < int(time_cut))
+      for matchup in old_matchups:
+        self.response.out.write('Found old match, %s, %s<br>' % (
           matchup.match_id, time.gmtime(matchup.match_creation / 1000)))
-      matchup.key.delete()
+        matchup.key.delete()
+        if not(more and curs):
+          break
 
 class ResultCache(ndb.Model):
   """ DB model for result pages.
