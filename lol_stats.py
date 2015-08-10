@@ -584,22 +584,27 @@ class PrintChampions(webapp2.RequestHandler):
       self.response.out.write(result.status_code)
 
 class CleanUpMatches(webapp2.RequestHandler):
-  """ Cleans up matches older than a week. """
+  """ Cleans up matches older than 2 weeks. """
   def get(self):
+    self.response.out.write('Launching a backend cleanup task.')
+    # Will invoke post().
+    taskqueue.add(url = '/cleanup_matches')
+
+  def post(self):
+    self.response.out.write('Cleaning old matches<br/>')
     time_cut = (datetime.datetime.now() -
-                datetime.timedelta(days=7)).strftime('%s') + '000'
+                datetime.timedelta(days=14)).strftime('%s') + '000'
     curs = Cursor()
     while True:
       # Breaks down the record into pieces to avoid timeout.
-      old_matchups, curs, more = (
-        ndb.AND(Matchup.match_creation != None,
-                Matchup.match_creation < int(time_cut))
+      matchups, curs, more = Matchup.query().fetch_page(5000)
       for matchup in old_matchups:
-        self.response.out.write('Found old match, %s, %s<br>' % (
-          matchup.match_id, time.gmtime(matchup.match_creation / 1000)))
-        matchup.key.delete()
-        if not(more and curs):
-          break
+        if matchup.match_creation != None and matchup.match_creation < int(time_cut):
+          self.response.out.write('Found old match, %s, %s<br>' % (
+              matchup.match_id, time.gmtime(matchup.match_creation / 1000)))
+          matchup.key.delete()
+      if not(more and curs):
+        break
 
 class ResultCache(ndb.Model):
   """ DB model for result pages.
