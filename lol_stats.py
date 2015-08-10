@@ -598,7 +598,7 @@ class CleanUpMatches(webapp2.RequestHandler):
     while True:
       # Breaks down the record into pieces to avoid timeout.
       matchups, curs, more = Matchup.query().fetch_page(5000)
-      for matchup in old_matchups:
+      for matchup in matchups:
         if matchup.match_creation != None and matchup.match_creation < int(time_cut):
           self.response.out.write('Found old match, %s, %s<br>' % (
               matchup.match_id, time.gmtime(matchup.match_creation / 1000)))
