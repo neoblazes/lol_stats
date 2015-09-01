@@ -593,7 +593,7 @@ class CleanUpMatches(webapp2.RequestHandler):
   def post(self):
     self.response.out.write('Cleaning old matches<br/>')
     time_cut = (datetime.datetime.now() -
-                datetime.timedelta(days=14)).strftime('%s') + '000'
+                datetime.timedelta(days=28)).strftime('%s') + '000'
     curs = Cursor()
     while True:
       # Breaks down the record into pieces to avoid timeout.
