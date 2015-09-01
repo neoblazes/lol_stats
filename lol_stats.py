@@ -377,7 +377,7 @@ class FindMatches(webapp2.RequestHandler):
       self.response.out.write('Updated tier, %s is %s.<br/>' %
                               (summoner.name, summoner.tier))
       if (summoner.tier not in tier_sort_score or
-          tier_sort_score[summoner.tier] < tier_PLATINUM):
+          tier_sort_score[summoner.tier] <= tier_PLATINUM):
         self.response.out.write('Deletes low ranked player, %s (%s).<br/>' %
                                 (summoner.name, summoner.tier))
         # Deletes players lower than PLATINUM.
