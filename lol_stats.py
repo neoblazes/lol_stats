@@ -27,7 +27,7 @@ sys.setdefaultencoding('utf-8')
 riot_api_host = 'https://kr.api.pvp.net/'
 # Get the api key by register to Riot developer,
 # https://developer.riotgames.com/
-riot_api_key = '?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc'
+riot_api_key = '?api_key=010d8a66-80f6-48b8-be7d-d58c1a8fb320'
 
 url_featured_matches = (
     riot_api_host + 'observer-mode/rest/featured' + riot_api_key)
@@ -788,6 +788,11 @@ class BuildResultPagesCron(webapp2.RequestHandler):
     except:
       self.response.out.write('Unknown excpetion<br/>');
     self.response.out.write('Succeeded!<br/>');
+    
+class RiotVerification(webapp2.RequestHandler):
+  """ File for riot verification. """
+  def get(self):
+    self.response.out.write('bddbac2b-43cd-4c4a-8bd7-585e5ba62c24')
 
 class Main(webapp2.RequestHandler):
   """ Main links. """
@@ -814,4 +819,5 @@ app = webapp2.WSGIApplication([
   # Statistics per lane.
   ('/', Main),
   ('/lane', ShowLane),
+  ('riot.txt', RiotVerification),
 ], debug=True)
