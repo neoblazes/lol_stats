@@ -819,5 +819,5 @@ app = webapp2.WSGIApplication([
   # Statistics per lane.
   ('/', Main),
   ('/lane', ShowLane),
-  ('riot.txt', RiotVerification),
+  ('/riot.txt', RiotVerification),
 ], debug=True)

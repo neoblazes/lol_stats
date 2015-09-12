@@ -3,6 +3,11 @@ App Engine code for LOL stats.
 Use this command to deploy.
 ./appcfg.py -A lol-stats-test update lol_stats
 
+From cloud console:
+cd src/lol-stats-test/master
+git pull --rebase origin
+appcfg.py -A lol-stats-test update .
+
 
 Riot API call examples,
 
