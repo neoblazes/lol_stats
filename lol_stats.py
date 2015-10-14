@@ -177,6 +177,11 @@ champ_name_map = {
   432 : '바드',
     }
 
+def GetChampName(num) {
+  if num in champ_name_map:
+    return champ_name_map[num]
+  return num
+
 tier_PLATINUM = 4
 tier_sort_score = {
     'UNRANKED' : 0,
@@ -710,7 +715,7 @@ class BuildResultPages(webapp2.RequestHandler):
         '<table class="sortable"><thead><tr><th>Against</th><th>Games</th>'
         '<th>Win</th><th>Lose</th><th>Ratio</th></tr></thead><tbody>'
         'Champ: %s (%s) Games: %d Win: %d Lose: %d Ratio: %0.1f%%<br/><br/>' %
-        (champ_name_map[champ], lane,
+        (GetChampName(champ), lane,
          games, win, games - win, float(win * 100) / games))
     for against in sorted(champ_games, key=champ_games.get, reverse=True):
       if not against:
@@ -729,7 +734,7 @@ class BuildResultPages(webapp2.RequestHandler):
     self.AddOrUpdateResponse('%s_%s' % (lane, champ), response)
     self.response.out.write(
         'Built page for lane %s, champ %s.<br/>' %
-        (lane, champ_name_map[champ]))
+        (lane, GetChampName(champ)))
 
   def BuildSummonersPage(self):
     tier_to_collect = ['CHALLENGER', 'MASTER', 'DIAMOND', 'PLATINUM']
@@ -766,7 +771,7 @@ class BuildResultPages(webapp2.RequestHandler):
     cache[0].put()
 
   def ChampWithLink(self, lane, champ):
-    name = champ_name_map[champ]
+    name = GetChampName(champ)
     return '<a href="/lane?lane=%s&champ=%s">%s</a>' % (lane, name, name)
 
   def GetTimestamp(self):
