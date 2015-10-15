@@ -177,11 +177,6 @@ champ_name_map = {
   432 : '바드',
     }
 
-def GetChampName(num) {
-  if num in champ_name_map:
-    return champ_name_map[num]
-  return num
-
 tier_PLATINUM = 4
 tier_sort_score = {
     'UNRANKED' : 0,
@@ -193,6 +188,11 @@ tier_sort_score = {
     'MASTER' : 6,
     'CHALLENGER' : 7,
     }
+
+def GetChampName(num):
+  if num in champ_name_map:
+    return champ_name_map[num]
+  return num
 
 class Summoner(ndb.Model):
   """ DB model for summoners. """
@@ -793,7 +793,7 @@ class BuildResultPagesCron(webapp2.RequestHandler):
     except:
       self.response.out.write('Unknown excpetion<br/>');
     self.response.out.write('Succeeded!<br/>');
-    
+
 class RiotVerification(webapp2.RequestHandler):
   """ File for riot verification. """
   def get(self):
