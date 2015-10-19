@@ -588,17 +588,19 @@ class PrintChampions(webapp2.RequestHandler):
     else:
       self.response.out.write(result.status_code)
 
-class CleanUpMatches(webapp2.RequestHandler):
+class CleanUpMatchesCron(webapp2.RequestHandler):
   """ Cleans up matches older than 2 weeks. """
   def get(self):
     self.response.out.write('Launching a backend cleanup task.')
     # Will invoke post().
     taskqueue.add(url = '/cleanup_matches')
-
-  def post(self):
+    
+class CleanUpMatches(webapp2.RequestHandler):
+  """ Cleans up matches older than 2 weeks. """
+  def get(self):
     self.response.out.write('Cleaning old matches<br/>')
     time_cut = (datetime.datetime.now() -
-                datetime.timedelta(days=28)).strftime('%s') + '000'
+                datetime.timedelta(days=14)).strftime('%s') + '000'
     curs = Cursor()
     while True:
       # Breaks down the record into pieces to avoid timeout.
@@ -610,7 +612,11 @@ class CleanUpMatches(webapp2.RequestHandler):
           matchup.key.delete()
       if not(more and curs):
         break
-
+        
+  def post(self):
+    # Called by taskqueue.
+    self.get()
+    
 class ResultCache(ndb.Model):
   """ DB model for result pages.
   Type of request,
@@ -820,6 +826,7 @@ app = webapp2.WSGIApplication([
   ('/matches', ShowMatches),
   ('/champions', PrintChampions),
   ('/cleanup_summoners', CleanupSummoners), # Remove when stable.
+  ('/cleanup_matches_cron', CleanUpMatchesCron),
   ('/cleanup_matches', CleanUpMatches),
   # Statistics per lane.
   ('/', Main),
