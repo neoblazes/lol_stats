@@ -605,7 +605,7 @@ class CleanUpMatches(webapp2.RequestHandler):
     while True:
       # Breaks down the record into pieces to avoid timeout.
       try:
-        matchups, curs, more = Matchup.query().fetch_page(5000)
+        matchups, curs, more = Matchup.query().fetch_page(5000, start_cursor=curs)
       except:
         self.response.out.write('Stopped cleaning job on exception.<br/>')
         break
