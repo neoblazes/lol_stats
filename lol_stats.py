@@ -591,9 +591,9 @@ class PrintChampions(webapp2.RequestHandler):
 class CleanUpMatchesCron(webapp2.RequestHandler):
   """ Cleans up matches older than 2 weeks. """
   def get(self):
-    self.response.out.write('Launching a backend cleanup task.')
     # Will invoke post().
     taskqueue.add(url = '/cleanup_matches')
+    self.response.out.write('Launched a backend cleanup task.')
     
 class CleanUpMatches(webapp2.RequestHandler):
   """ Cleans up matches older than 2 weeks. """
@@ -604,7 +604,11 @@ class CleanUpMatches(webapp2.RequestHandler):
     curs = Cursor()
     while True:
       # Breaks down the record into pieces to avoid timeout.
-      matchups, curs, more = Matchup.query().fetch_page(5000)
+      try:
+        matchups, curs, more = Matchup.query().fetch_page(5000)
+      except:
+        self.response.out.write('Stopped cleaning job on exception.<br/>')
+        break
       for matchup in matchups:
         if matchup.match_creation != None and matchup.match_creation < int(time_cut):
           self.response.out.write('Found old match, %s, %s<br>' % (
