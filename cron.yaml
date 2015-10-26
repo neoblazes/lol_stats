@@ -1,7 +1,7 @@
 cron:
 - description: find new matches, find up to 500 new matches
   url: /find_matches
-  schedule: every 8 mins
+  schedule: every 3 mins
 - description: update matches' stats, launch 5 tasks to updates 10 matches each
   url: /update_matches_cron
   schedule: every 1 mins
