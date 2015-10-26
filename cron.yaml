@@ -4,7 +4,7 @@ cron:
   schedule: every 8 mins
 - description: update matches' stats, launch 5 tasks to updates 10 matches each
   url: /update_matches_cron
-  schedule: every 2 mins
+  schedule: every 1 mins
 - description: analyze data and build result pages
   url: /build_result_pages_cron
   schedule: every 3 hours
