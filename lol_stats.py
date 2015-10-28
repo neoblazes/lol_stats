@@ -644,13 +644,13 @@ class BuildResultPages(webapp2.RequestHandler):
     response = (
         'Welcome to LOL stats, select lane to see.<br/><br/>'
         '<a href="/lane?lane=top">Top</a><br/>'
-        '<a href="/lane?lane=middle">Middle</a><br/>'
         '<a href="/lane?lane=jungle">Jungle</a><br/>'
+        '<a href="/lane?lane=middle">Middle</a><br/>'
         '<a href="/lane?lane=bottom_duo_carry">Bottom Dou Carry</a><br/>'
         '<a href="/lane?lane=bottom_duo_support">Bottom Dou Support</a><br/>')
     response += (
         '<br/>Collected %d KR summoners '
-        'and analyzed %d / %d PLATINUM+ matches.<br/>' %
+        'and analyzed %d / %d DIAMOND+ matches.<br/>' %
         (Summoner.query().count(), analyzed, Matchup.query().count()))
     response += self.GetTimestamp()
 
