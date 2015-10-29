@@ -162,6 +162,7 @@ champ_name_map = {
   157 : '야스오',
   161 : '벨코즈',
   201 : '브라움',
+  203 : '킨드레드',
   222 : '징크스',
   223 : '탐 켄치',
   236 : '루시안',
@@ -600,7 +601,7 @@ class CleanUpMatches(webapp2.RequestHandler):
   def get(self):
     self.response.out.write('Cleaning old matches<br/>')
     time_cut = (datetime.datetime.now() -
-                datetime.timedelta(days=14)).strftime('%s') + '000'
+                datetime.timedelta(days=21)).strftime('%s') + '000'
     curs = Cursor()
     while True:
       # Breaks down the record into pieces to avoid timeout.
