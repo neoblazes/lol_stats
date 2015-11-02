@@ -597,7 +597,7 @@ class CleanUpMatchesCron(webapp2.RequestHandler):
     self.response.out.write('Launched a backend cleanup task.')
     
 class CleanUpMatches(webapp2.RequestHandler):
-  """ Cleans up matches older than 2 weeks. """
+  """ Cleans up matches older than 3 weeks. """
   def get(self):
     self.response.out.write('Cleaning old matches<br/>')
     time_cut = (datetime.datetime.now() -
