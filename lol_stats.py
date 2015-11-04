@@ -177,6 +177,135 @@ champ_name_map = {
   429 : '칼리스타',
   432 : '바드',
     }
+champ_key_map = {
+  1 : 'Annie',
+  2 : 'Olaf',
+  3 : 'Galio',
+  4 : 'TwistedFate',
+  5 : 'XinZhao',
+  6 : 'Urgot',
+  7 : 'Leblanc',
+  8 : 'Vladimir',
+  9 : 'FiddleSticks',
+  10 : 'Kayle',
+  11 : 'MasterYi',
+  12 : 'Alistar',
+  13 : 'Ryze',
+  14 : 'Sion',
+  15 : 'Sivir',
+  16 : 'Soraka',
+  17 : 'Teemo',
+  18 : 'Tristana',
+  19 : 'Warwick',
+  20 : 'Nunu',
+  21 : 'MissFortune',
+  22 : 'Ashe',
+  23 : 'Tryndamere',
+  24 : 'Jax',
+  25 : 'Morgana',
+  26 : 'Zilean',
+  27 : 'Singed',
+  28 : 'Evelynn',
+  29 : 'Twitch',
+  30 : 'Karthus',
+  31 : 'Chogath',
+  32 : 'Amumu',
+  33 : 'Rammus',
+  34 : 'Anivia',
+  35 : 'Shaco',
+  36 : 'DrMundo',
+  37 : 'Sona',
+  38 : 'Kassadin',
+  39 : 'Irelia',
+  40 : 'Janna',
+  41 : 'Gangplank',
+  42 : 'Corki',
+  43 : 'Karma',
+  44 : 'Taric',
+  45 : 'Veigar',
+  48 : 'Trundle',
+  50 : 'Swain',
+  51 : 'Caitlyn',
+  53 : 'Blitzcrank',
+  54 : 'Malphite',
+  55 : 'Katarina',
+  56 : 'Nocturne',
+  57 : 'Maokai',
+  58 : 'Renekton',
+  59 : 'JarvanIV',
+  60 : 'Elise',
+  61 : 'Orianna',
+  62 : 'MonkeyKing',
+  63 : 'Brand',
+  64 : 'LeeSin',
+  67 : 'Vayne',
+  68 : 'Rumble',
+  69 : 'Cassiopeia',
+  72 : 'Skarner',
+  74 : 'Heimerdinger',
+  75 : 'Nasus',
+  76 : 'Nidalee',
+  77 : 'Udyr',
+  78 : 'Poppy',
+  79 : 'Gragas',
+  80 : 'Pantheon',
+  81 : 'Ezreal',
+  82 : 'Mordekaiser',
+  83 : 'Yorick',
+  84 : 'Akali',
+  85 : 'Kennen',
+  86 : 'Garen',
+  89 : 'Leona',
+  90 : 'Malzahar',
+  91 : 'Talon',
+  92 : 'Riven',
+  96 : 'KogMaw',
+  98 : 'Shen',
+  99 : 'Lux',
+  101 : 'Xerath',
+  102 : 'Shyvana',
+  103 : 'Ahri',
+  104 : 'Graves',
+  105 : 'Fizz',
+  106 : 'Volibear',
+  107 : 'Rengar',
+  110 : 'Varus',
+  111 : 'Nautilus',
+  112 : 'Viktor',
+  113 : 'Sejuani',
+  114 : 'Fiora',
+  115 : 'Ziggs',
+  117 : 'Lulu',
+  119 : 'Draven',
+  120 : 'Hecarim',
+  121 : 'Khazix',
+  122 : 'Darius',
+  126 : 'Jayce',
+  127 : 'Lissandra',
+  131 : 'Diana',
+  133 : 'Quinn',
+  134 : 'Syndra',
+  143 : 'Zyra',
+  150 : 'Gnar',
+  154 : 'Zac',
+  157 : 'Yasuo',
+  161 : 'Velkoz',
+  201 : 'Braum',
+  203 : 'Kindred',
+  222 : 'Jinx',
+  223 : 'TahmKench',
+  236 : 'Lucian',
+  238 : 'Zed',
+  245 : 'Ekko',
+  254 : 'Vi',
+  266 : 'Aatrox',
+  267 : 'Nami',
+  268 : 'Azir',
+  412 : 'Thresh',
+  421 : 'RekSai',
+  429 : 'Kalista',
+  432 : 'Bard',
+    }
 
 tier_PLATINUM = 4
 tier_sort_score = {
@@ -194,6 +323,12 @@ def GetChampName(num):
   if num in champ_name_map:
     return champ_name_map[num]
   return num
+
+image_url_prefix = 'http://ddragon.leagueoflegends.com/cdn/5.22.1/img'
+def GetChampImage(num):
+  if num in champ_name_map:
+    return '%s/champion/%s.png' % (image_url_prefix, champ_key_map[num])
+  return '%s/profileicon/588.png' % image_url_prefix
 
 class Summoner(ndb.Model):
   """ DB model for summoners. """
@@ -579,13 +714,21 @@ class PrintChampions(webapp2.RequestHandler):
     if result.status_code == 200:
       rc = json.loads(result.content)
       champ_id_name = {}
+      champ_id_key = {}
       for value in rc['data'].values():
         id = value['id']
+        key = value['key']
         name = value['name']
         champ_id_name[id] = name
+        champ_id_key[id] = key
+      self.response.out.write('Name map<br/>')
       for id, name in champ_id_name.iteritems():
         self.response.out.write(
             '&nbsp;&nbsp;%d : \'%s\',<br/>' % (id, name))
+      self.response.out.write('Key map<br/>')
+      for id, key in champ_id_key.iteritems():
+        self.response.out.write(
+            '&nbsp;&nbsp;%d : \'%s\',<br/>' % (id, key))
     else:
       self.response.out.write(result.status_code)
 
@@ -595,7 +738,7 @@ class CleanUpMatchesCron(webapp2.RequestHandler):
     # Will invoke post().
     taskqueue.add(url = '/cleanup_matches')
     self.response.out.write('Launched a backend cleanup task.')
-    
+
 class CleanUpMatches(webapp2.RequestHandler):
   """ Cleans up matches older than 3 weeks. """
   def get(self):
@@ -617,11 +760,11 @@ class CleanUpMatches(webapp2.RequestHandler):
           matchup.key.delete()
       if not(more and curs):
         break
-        
+
   def post(self):
     # Called by taskqueue.
     self.get()
-    
+
 class ResultCache(ndb.Model):
   """ DB model for result pages.
   Type of request,
@@ -707,11 +850,12 @@ class BuildResultPages(webapp2.RequestHandler):
       games = champ_games[champ]
       win = champ_win[champ]
       lose = games - win
+      ratio = float(win * 100) / games
+      color = 'blue' if ratio >= 50 else 'red'
       response += (
           '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>'
-          '<td>%0.1f%%</td></tr>'
-          % (self.ChampWithLink(lane, champ), games, win, lose,
-             float(win * 100) / games))
+          '<td><font color=%s>%0.1f%%</font></td></tr>'
+          % (self.ChampWithLink(lane, champ), games, win, lose, color, ratio))
     response += ('</tbody></table>')
     response += self.GetTimestamp()
     response += ('</body></html>')
@@ -734,10 +878,13 @@ class BuildResultPages(webapp2.RequestHandler):
       games = champ_games[against]
       win = champ_win[against]
       lose = games - win
+      ratio = float(win * 100) / games
+      color = 'blue' if ratio >= 50 else 'red'
       response += (
-          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td><td>%0.1f%%</td></tr>'
+          ('<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>' +
+           '<td><font color=%s>%0.1f%%</font></td></tr>')
           % (self.ChampWithLink(lane, against), games, win, lose,
-             float(win * 100) / games))
+             color, ratio))
     response += ('</tbody></table>')
     response += self.GetTimestamp()
     response += ('</body></html>')
@@ -783,7 +930,12 @@ class BuildResultPages(webapp2.RequestHandler):
 
   def ChampWithLink(self, lane, champ):
     name = GetChampName(champ)
-    return '<a href="/lane?lane=%s&champ=%s">%s</a>' % (lane, name, name)
+    img = GetChampImage(champ)
+    return (('<div style="display: inline-block; vertical-align: middle">' +
+             '<img src="%s" width=20 height=20 /></div>' +
+             '<div style="display: inline-block; vertical-align: middle">' +
+             '<a href="/lane?lane=%s&champ=%s"> %s</a></div>') %
+            (img, lane, name, name))
 
   def GetTimestamp(self):
     return ('<br/>Updated: %s<br/>' %
