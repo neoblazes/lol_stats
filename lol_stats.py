@@ -866,11 +866,16 @@ class BuildResultPages(webapp2.RequestHandler):
   def BuildLaneChampPage(self, lane, champ, games, win, champ_games, champ_win):
     if champ not in champ_name_map:
       return
+    # TODO: use style sheet.
     response = (
         '<table class="sortable"><thead><tr><th>Against</th><th>Games</th>'
         '<th>Win</th><th>Lose</th><th>Ratio</th></tr></thead><tbody>'
-        'Champ: %s (%s) Games: %d Win: %d Lose: %d Ratio: %0.1f%%<br/><br/>' %
-        (GetChampName(champ), lane,
+        '<div style="display: inline-block; vertical-align: middle">'
+        '<img src="%s" width=40 height=40 /></div>&nbsp;'
+        '<div style="display: inline-block; vertical-align: middle">'
+        'Champ: %s (%s) Games: %d Win: %d Lose: %d Ratio: %0.1f%%</div>'
+        '<br/><br/>' %
+        (GetChampImage(champ), GetChampName(champ), lane,
          games, win, games - win, float(win * 100) / games))
     for against in sorted(champ_games, key=champ_games.get, reverse=True):
       if not against:
@@ -881,8 +886,8 @@ class BuildResultPages(webapp2.RequestHandler):
       ratio = float(win * 100) / games
       color = 'blue' if ratio >= 50 else 'red'
       response += (
-          ('<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>' +
-           '<td><font color=%s>%0.1f%%</font></td></tr>')
+          '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>'
+          '<td><font color=%s>%0.1f%%</font></td></tr>'
           % (self.ChampWithLink(lane, against), games, win, lose,
              color, ratio))
     response += ('</tbody></table>')
@@ -931,10 +936,10 @@ class BuildResultPages(webapp2.RequestHandler):
   def ChampWithLink(self, lane, champ):
     name = GetChampName(champ)
     img = GetChampImage(champ)
-    return (('<div style="display: inline-block; vertical-align: middle">' +
-             '<img src="%s" width=20 height=20 /></div>' +
-             '<div style="display: inline-block; vertical-align: middle">' +
-             '<a href="/lane?lane=%s&champ=%s"> %s</a></div>') %
+    return ('<div style="display: inline-block; vertical-align: middle">'
+            '<img src="%s" width=20 height=20 /></div> '
+            '<div style="display: inline-block; vertical-align: middle">'
+            '<a href="/lane?lane=%s&champ=%s">%s</a></div>' %
             (img, lane, name, name))
 
   def GetTimestamp(self):
