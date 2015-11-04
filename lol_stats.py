@@ -10,6 +10,7 @@
 import cgi
 import datetime
 import json
+import random
 import time
 import webapp2
 
@@ -329,6 +330,12 @@ def GetChampImage(num):
   if num in champ_name_map:
     return '%s/champion/%s.png' % (image_url_prefix, champ_key_map[num])
   return '%s/profileicon/588.png' % image_url_prefix
+
+poster_url_pattern = ('http://ddragon.leagueoflegends.com/cdn/img/'
+                      'champion/loading/%s_0.jpg')
+def GetRandomChampPoster():
+  return poster_url_pattern % random.choice(champ_key_map.values())
+
 
 class Summoner(ndb.Model):
   """ DB model for summoners. """
@@ -785,7 +792,7 @@ class BuildResultPages(webapp2.RequestHandler):
 
   def BuildMainPage(self, analyzed):
     response = (
-        'Welcome to LOL stats, select lane to see.<br/><br/>'
+        '<br/>Welcome to LOL stats, select lane to see.<br/><br/>'
         '<a href="/lane?lane=top">Top</a><br/>'
         '<a href="/lane?lane=jungle">Jungle</a><br/>'
         '<a href="/lane?lane=middle">Middle</a><br/>'
@@ -972,7 +979,13 @@ class Main(webapp2.RequestHandler):
   def get(self):
     cache = ResultCache.query(ResultCache.request == '/').fetch(1)
     if len(cache) >= 1:
-      self.response.out.write(cache[0].response)
+      posters_bar = ''
+      champ_posters = set()
+      while len(champ_posters) < 7:
+        champ_posters.add(GetRandomChampPoster())
+      for poster in champ_posters:
+        posters_bar += '<img src="%s" width=154 height=280 />' % poster
+      self.response.out.write('%s<br/>%s' % (posters_bar, cache[0].response))
 
 app = webapp2.WSGIApplication([
   # Crawl commands.
