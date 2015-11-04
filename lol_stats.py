@@ -981,7 +981,7 @@ class Main(webapp2.RequestHandler):
     if len(cache) >= 1:
       posters_bar = ''
       champ_posters = set()
-      while len(champ_posters) < 7:
+      while len(champ_posters) < 5:
         champ_posters.add(GetRandomChampPoster())
       for poster in champ_posters:
         posters_bar += '<img src="%s" width=154 height=280 />' % poster
