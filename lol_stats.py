@@ -493,7 +493,7 @@ class CleanUpMatches(webapp2.RequestHandler):
   def get(self):
     self.response.out.write('Cleaning old matches<br/>')
     time_cut = (datetime.datetime.now() -
-                datetime.timedelta(days=0)).strftime('%s') + '000'
+                datetime.timedelta(days=14)).strftime('%s') + '000'
     curs = Cursor()
     while True:
       # Breaks down the record into pieces to avoid timeout.
@@ -656,7 +656,7 @@ class BuildResultPages(webapp2.RequestHandler):
       for item in sorted_items:
         # TODO: add tooltip.
         item_str += (
-            '<img src="http://ddragon.leagueoflegends.com/cdn/5.22.1/'
+            '<img src="http://ddragon.leagueoflegends.com/cdn/5.21.1/'
             'img/item/%s.png" width=20 height=20 />' % item)
       response += (
           '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>'
