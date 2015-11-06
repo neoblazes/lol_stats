@@ -632,7 +632,8 @@ class BuildResultPages(webapp2.RequestHandler):
     # TODO: use style sheet.
     response = (
         '<table class="sortable"><thead><tr><th>Against</th><th>Games</th>'
-        '<th>Win</th><th>Lose</th><th>Ratio</th><th>items</th></tr></thead><tbody>'
+        '<th>Win</th><th>Lose</th><th>Ratio</th><th>Popular items</th></tr>'
+        '</thead><tbody>'
         '<div style="display: inline-block; vertical-align: middle">'
         '<img src="%s" width=40 height=40 /></div>&nbsp;'
         '<div style="display: inline-block; vertical-align: middle">'
