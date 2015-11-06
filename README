@@ -13,21 +13,21 @@ Riot API call examples,
 
 Seed (1 time):
  Find players from featured.
-  https://kr.api.pvp.net/observer-mode/rest/featured?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
-  https://kr.api.pvp.net/api/lol/kr/v1.4/summoner/by-name/c1ash?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+  https://kr.api.pvp.net/observer-mode/rest/featured?api_key=010d8a66-80f6-48b8-be7d-d58c1a8fb320
+  https://kr.api.pvp.net/api/lol/kr/v1.4/summoner/by-name/c1ash?api_key=010d8a66-80f6-48b8-be7d-d58c1a8fb320
 
 Find matches:
  Scan players, find matches, "least recent updated summoner first".
  Note, matchhistory has detailed info, while matchlist has more matches.
-  https://kr.api.pvp.net/api/lol/kr/v2.2/matchlist/by-summoner/30202240?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+  https://kr.api.pvp.net/api/lol/kr/v2.2/matchlist/by-summoner/30202240?api_key=010d8a66-80f6-48b8-be7d-d58c1a8fb320
 
 Update stats from matches (also players):
  Note, lane info is in the data.
-  https://kr.api.pvp.net/api/lol/kr/v2.2/match/1995207724?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+  https://kr.api.pvp.net/api/lol/kr/v2.2/match/1995207724?api_key=010d8a66-80f6-48b8-be7d-d58c1a8fb320
 
 
 Find tier info:
-  https://kr.api.pvp.net/api/lol/kr/v2.5/league/by-summoner/2077233/entry?api_key=7ff24dff-48c7-4df8-883b-d08d4787fefc
+  https://kr.api.pvp.net/api/lol/kr/v2.5/league/by-summoner/2077233/entry?api_key=010d8a66-80f6-48b8-be7d-d58c1a8fb320
 
 Only 500 calls are allowed in 10 minutes.
 TODO: Calculate champion stats based on the all matches recorded. Do not server

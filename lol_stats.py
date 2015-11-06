@@ -14,6 +14,7 @@ import time
 import webapp2
 
 from collections import defaultdict
+from operator import itemgetter
 from google.appengine.ext import ndb
 from google.appengine.api import taskqueue
 from google.appengine.api import urlfetch
@@ -161,6 +162,17 @@ class Matchup(ndb.Model):
   bottom_duo_carry_lose = ndb.IntegerProperty(indexed=False)
   bottom_duo_support_win = ndb.IntegerProperty(indexed=False)
   bottom_duo_support_lose = ndb.IntegerProperty(indexed=False)
+  # Items per lane.
+  top_win_items = ndb.StringProperty(indexed=False)
+  top_lose_items = ndb.StringProperty(indexed=False)
+  middle_win_items = ndb.StringProperty(indexed=False)
+  middle_lose_items = ndb.StringProperty(indexed=False)
+  jungle_win_items = ndb.StringProperty(indexed=False)
+  jungle_lose_items = ndb.StringProperty(indexed=False)
+  bottom_duo_carry_win_items = ndb.StringProperty(indexed=False)
+  bottom_duo_carry_lose_items = ndb.StringProperty(indexed=False)
+  bottom_duo_support_win_items = ndb.StringProperty(indexed=False)
+  bottom_duo_support_lose_items = ndb.StringProperty(indexed=False)
 
 class FindMatches(webapp2.RequestHandler):
   """ Finds matches by listing games for summoners.
@@ -372,8 +384,13 @@ class UpdateMatches(webapp2.RequestHandler):
               participant['timeline']['lane'], participant['timeline']['role'],
               participant['stats']['winner'])
           champ = participant['championId']
-          self.response.out.write('%s = %s<br/>' % (attr, champ))
+          stats = participant['stats']
+          items = '%d %d %d %d %d %d' % (
+              stats['item0'], stats['item1'], stats['item2'],
+              stats['item3'], stats['item4'], stats['item5'])
+          self.response.out.write('%s = %s, items(%s)<br/>' % (attr, champ, items))
           setattr(matchup, attr, champ)
+          setattr(matchup, attr + '_items', items)
         matchup.match_creation = rc['matchCreation']
         matchup.put()
 
@@ -476,7 +493,7 @@ class CleanUpMatches(webapp2.RequestHandler):
   def get(self):
     self.response.out.write('Cleaning old matches<br/>')
     time_cut = (datetime.datetime.now() -
-                datetime.timedelta(days=21)).strftime('%s') + '000'
+                datetime.timedelta(days=0)).strftime('%s') + '000'
     curs = Cursor()
     while True:
       # Breaks down the record into pieces to avoid timeout.
@@ -540,6 +557,8 @@ class BuildResultPages(webapp2.RequestHandler):
     champ_win = defaultdict(lambda: defaultdict(int))
     champ_vs_games = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     champ_vs_win = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    champ_items = defaultdict(lambda: defaultdict(
+        lambda: defaultdict(lambda: defaultdict(int))))
 
     self.response.out.write('Analyzing all matches...<br/>')
     analyzed = 0
@@ -561,6 +580,16 @@ class BuildResultPages(webapp2.RequestHandler):
           champ_vs_games[lane][win_champ][lose_champ] += 1
           champ_vs_games[lane][lose_champ][win_champ] += 1
           champ_vs_win[lane][win_champ][lose_champ] += 1
+          win_items = getattr(matchup, '%s_win_items' % lane)
+          if win_items:
+            for win_item in win_items.split():
+              if win_item != '0':
+                champ_items[lane][win_champ][lose_champ][win_item] += 1
+          lose_items = getattr(matchup, '%s_lose_items' % lane)
+          if lose_items:
+            for lose_item in lose_items.split():
+              if lose_item != '0':
+                champ_items[lane][lose_champ][win_champ][lose_item] += 1
       if not(more and curs):
         break
     for lane in lanes:
@@ -569,7 +598,8 @@ class BuildResultPages(webapp2.RequestHandler):
       for champ in champ_vs_games[lane]:
         self.BuildLaneChampPage(
             lane, champ, champ_games[lane][champ], champ_win[lane][champ],
-            champ_vs_games[lane][champ], champ_vs_win[lane][champ])
+            champ_vs_games[lane][champ], champ_vs_win[lane][champ],
+            champ_items[lane][champ])
     return analyzed
 
   def BuildLanePage(self, lane, champ_games, champ_win):
@@ -595,19 +625,21 @@ class BuildResultPages(webapp2.RequestHandler):
     self.AddOrUpdateResponse(lane, response)
     self.response.out.write('Built page for lane %s.<br/>' % lane)
 
-  def BuildLaneChampPage(self, lane, champ, games, win, champ_games, champ_win):
+  def BuildLaneChampPage(self, lane, champ, games, win, champ_games,
+                         champ_win, champ_items):
     if champ not in champ_mappings.champ_name_map:
       return
     # TODO: use style sheet.
     response = (
         '<table class="sortable"><thead><tr><th>Against</th><th>Games</th>'
-        '<th>Win</th><th>Lose</th><th>Ratio</th></tr></thead><tbody>'
+        '<th>Win</th><th>Lose</th><th>Ratio</th><th>items</th></tr></thead><tbody>'
         '<div style="display: inline-block; vertical-align: middle">'
         '<img src="%s" width=40 height=40 /></div>&nbsp;'
         '<div style="display: inline-block; vertical-align: middle">'
         'Champ: %s (%s) Games: %d Win: %d Lose: %d Ratio: %0.1f%%</div>'
         '<br/><br/>' %
-        (GetChampImage(champ), GetChampName(champ), lane,
+        (champ_mappings.GetChampImage(champ),
+         champ_mappings.GetChampName(champ), lane,
          games, win, games - win, float(win * 100) / games))
     for against in sorted(champ_games, key=champ_games.get, reverse=True):
       if not against:
@@ -617,11 +649,20 @@ class BuildResultPages(webapp2.RequestHandler):
       lose = games - win
       ratio = float(win * 100) / games
       color = 'blue' if ratio >= 50 else 'red'
+      items = champ_items[against]
+      sorted_items = [x[0] for x in sorted(
+          items.items(), key=itemgetter(1), reverse=True)][:10]
+      item_str = ''
+      for item in sorted_items:
+        # TODO: add tooltip.
+        item_str += (
+            '<img src="http://ddragon.leagueoflegends.com/cdn/5.22.1/'
+            'img/item/%s.png" width=20 height=20 />' % item)
       response += (
           '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>'
-          '<td><font color=%s>%0.1f%%</font></td></tr>'
+          '<td><font color=%s>%0.1f%%</font></td><td>%s</td></tr>'
           % (self.ChampWithLink(lane, against), games, win, lose,
-             color, ratio))
+             color, ratio, item_str))
     response += ('</tbody></table>')
     response += self.GetTimestamp()
     response += ('</body></html>')
@@ -629,7 +670,7 @@ class BuildResultPages(webapp2.RequestHandler):
     self.AddOrUpdateResponse('%s_%s' % (lane, champ), response)
     self.response.out.write(
         'Built page for lane %s, champ %s.<br/>' %
-        (lane, GetChampName(champ)))
+        (lane, champ_mappings.GetChampName(champ)))
 
   def BuildSummonersPage(self):
     tier_to_collect = ['CHALLENGER', 'MASTER', 'DIAMOND', 'PLATINUM']
@@ -666,8 +707,8 @@ class BuildResultPages(webapp2.RequestHandler):
     cache[0].put()
 
   def ChampWithLink(self, lane, champ):
-    name = GetChampName(champ)
-    img = GetChampImage(champ)
+    name = champ_mappings.GetChampName(champ)
+    img = champ_mappings.GetChampImage(champ)
     return ('<div style="display: inline-block; vertical-align: middle">'
             '<img src="%s" width=20 height=20 /></div> '
             '<div style="display: inline-block; vertical-align: middle">'
