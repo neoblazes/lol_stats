@@ -50,6 +50,9 @@ url_champion = (
     'https://global.api.pvp.net/api/lol/static-data/kr/v1.2/champion' +
     riot_api_key)
 
+url_item_image_tpl = (
+    'http://ddragon.leagueoflegends.com/cdn/5.22.3/img/item/%s.png')
+
 tier_PLATINUM = 4
 tier_sort_score = {
     'UNRANKED' : 0,
@@ -656,9 +659,8 @@ class BuildResultPages(webapp2.RequestHandler):
       item_str = ''
       for item in sorted_items:
         # TODO: add tooltip.
-        item_str += (
-            '<img src="http://ddragon.leagueoflegends.com/cdn/5.21.1/'
-            'img/item/%s.png" width=20 height=20 />' % item)
+        item_str += ('<img src="' + url_item_image_tpl +
+                     '" width=20 height=20 />' % item)
       response += (
           '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>'
           '<td><font color=%s>%0.1f%%</font></td><td>%s</td></tr>'
