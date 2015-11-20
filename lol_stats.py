@@ -659,8 +659,9 @@ class BuildResultPages(webapp2.RequestHandler):
       item_str = ''
       for item in sorted_items:
         # TODO: add tooltip.
-        item_str += ('<img src="' + url_item_image_tpl +
-                     '" width=20 height=20 />' % item)
+        item_str += (
+            ('<img src="' + url_item_image_tpl + '" width=20 height=20 />') %
+            item)
       response += (
           '<tr><td>%s</td><td>%d</td><td>%d</td><td>%d</td>'
           '<td><font color=%s>%0.1f%%</font></td><td>%s</td></tr>'
