@@ -655,7 +655,7 @@ class BuildResultPages(webapp2.RequestHandler):
       color = 'blue' if ratio >= 50 else 'red'
       items = champ_items[against]
       sorted_items = [x[0] for x in sorted(
-          items.items(), key=itemgetter(1), reverse=True)][:12]
+          items.items(), key=itemgetter(1), reverse=True)][:14]
       item_str = ''
       for item in sorted_items:
         # TODO: add tooltip.
