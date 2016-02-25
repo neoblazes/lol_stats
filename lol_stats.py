@@ -51,7 +51,7 @@ url_champion = (
     riot_api_key)
 
 url_item_image_tpl = (
-    'http://ddragon.leagueoflegends.com/cdn/5.22.3/img/item/%s.png')
+    'http://ddragon.leagueoflegends.com/cdn/6.4.1/img/item/%s.png')
 
 tier_sort_score = {
     'UNRANKED' : 0,

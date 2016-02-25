@@ -275,7 +275,7 @@ def GetChampName(num):
     return champ_name_map[num]
   return num
 
-image_url_prefix = 'http://ddragon.leagueoflegends.com/cdn/5.21.1/img'
+image_url_prefix = 'http://ddragon.leagueoflegends.com/cdn/6.4.1/img'
 def GetChampImage(num):
   if num in champ_name_map:
     return '%s/champion/%s.png' % (image_url_prefix, champ_key_map[num])
