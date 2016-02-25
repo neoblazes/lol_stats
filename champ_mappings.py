@@ -121,6 +121,7 @@ champ_name_map = {
   157 : '야스오',
   161 : '벨코즈',
   201 : '브라움',
+  202 : '진',
   203 : '킨드레드',
   222 : '징크스',
   223 : '탐 켄치',
@@ -136,7 +137,7 @@ champ_name_map = {
   421 : '렉사이',
   429 : '칼리스타',
   432 : '바드',
-    }
+}
 champ_key_map = {
   1 : 'Annie',
   2 : 'Olaf',
@@ -251,6 +252,7 @@ champ_key_map = {
   157 : 'Yasuo',
   161 : 'Velkoz',
   201 : 'Braum',
+  202 : 'Jhin',
   203 : 'Kindred',
   222 : 'Jinx',
   223 : 'TahmKench',
@@ -262,11 +264,11 @@ champ_key_map = {
   267 : 'Nami',
   268 : 'Azir',
   412 : 'Thresh',
-  420 : 'Illaoi', 
+  420 : 'Illaoi',
   421 : 'RekSai',
   429 : 'Kalista',
   432 : 'Bard',
-    }
+}
 
 def GetChampName(num):
   if num in champ_name_map:

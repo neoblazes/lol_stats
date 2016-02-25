@@ -65,6 +65,7 @@ tier_sort_score = {
     'CHALLENGER' : 7,
     }
 
+rank_queue_id = 'TEAM_BUILDER_DRAFT_RANKED_5x5'
 
 class Summoner(ndb.Model):
   """ DB model for summoners. """
@@ -236,7 +237,7 @@ class FindMatches(webapp2.RequestHandler):
         rc = json.loads(result.content)
         for key in rc:
           for league in rc[key]:
-            if league['queue'] == 'RANKED_SOLO_5x5':
+            if league['queue'] == rank_queue_id:
               id_to_tier[int(key)] = league['tier']
               break
         break
