@@ -301,7 +301,7 @@ class FindMatches(webapp2.RequestHandler):
           continue
         for match in rc['matches']:
           # Skips non rank solo games.
-          if match['queue'] != 'RANKED_SOLO_5x5':
+          if match['queue'] != rank_game_id:
             continue
           # Skips already existing matches.
           if Matchup.query(Matchup.match_id==match['matchId']).count() > 0:
