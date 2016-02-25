@@ -63,9 +63,10 @@ tier_sort_score = {
     'MASTER' : 6,
     'CHALLENGER' : 7,
     }
-tier_cut_off = 3  # lowest tier to store. 3 is GOLD.
+tier_cut_off = 4  # lowest tier to store. 4 is PLATIN.
 
-rank_queue_id = 'TEAM_BUILDER_DRAFT_RANKED_5x5'
+rank_queue_id = 'RANKED_SOLO_5x5'
+rank_game_id = 'TEAM_BUILDER_DRAFT_RANKED_5x5'
 
 class Summoner(ndb.Model):
   """ DB model for summoners. """
