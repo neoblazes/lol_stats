@@ -53,7 +53,6 @@ url_champion = (
 url_item_image_tpl = (
     'http://ddragon.leagueoflegends.com/cdn/5.22.3/img/item/%s.png')
 
-tier_PLATINUM = 4
 tier_sort_score = {
     'UNRANKED' : 0,
     'BRONZE' : 1,
@@ -64,6 +63,7 @@ tier_sort_score = {
     'MASTER' : 6,
     'CHALLENGER' : 7,
     }
+tier_cut_off = 3  # lowest tier to store. 3 is GOLD.
 
 rank_queue_id = 'TEAM_BUILDER_DRAFT_RANKED_5x5'
 
@@ -268,7 +268,7 @@ class FindMatches(webapp2.RequestHandler):
       self.response.out.write('Updated tier, %s is %s.<br/>' %
                               (summoner.name, summoner.tier))
       if (summoner.tier not in tier_sort_score or
-          tier_sort_score[summoner.tier] <= tier_PLATINUM):
+          tier_sort_score[summoner.tier] < tier_cut_off):
         self.response.out.write('Deletes low ranked player, %s (%s).<br/>' %
                                 (summoner.name, summoner.tier))
         # Deletes players lower than PLATINUM.
