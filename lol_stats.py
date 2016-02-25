@@ -244,7 +244,9 @@ class FindMatches(webapp2.RequestHandler):
       elif result.status_code == 429:
         time.sleep(3)  # Sleeps 3 seconds to avoid ACL.
       else:
-        self.response.out.write('API server error.<br/>')
+        self.response.out.write('API server error. Delete all.<br/>')
+        for summoner in summoners:
+          summoner.key.delete()
         return
 
     # Find matchs.
