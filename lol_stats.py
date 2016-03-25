@@ -30,7 +30,7 @@ import champ_mappings
 riot_api_host = 'https://kr.api.pvp.net/'
 # Get the api key by register to Riot developer,
 # https://developer.riotgames.com/
-riot_api_key = '?api_key=010d8a66-80f6-48b8-be7d-d58c1a8fb320'
+riot_api_key = '?api_key=16fe66a6-fde7-4e0f-bb9f-f630fd95fda4'
 
 url_featured_matches = (
     riot_api_host + 'observer-mode/rest/featured' + riot_api_key)
@@ -746,7 +746,7 @@ class BuildResultPagesCron(webapp2.RequestHandler):
 class RiotVerification(webapp2.RequestHandler):
   """ File for riot verification. """
   def get(self):
-    self.response.out.write('bddbac2b-43cd-4c4a-8bd7-585e5ba62c24')
+    self.response.out.write('cab94386-2391-467e-9457-7ed5d1abffe7')
 
 class Main(webapp2.RequestHandler):
   """ Main links. """
