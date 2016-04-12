@@ -30,7 +30,7 @@ import champ_mappings
 riot_api_host = 'https://kr.api.pvp.net/'
 # Get the api key by register to Riot developer,
 # https://developer.riotgames.com/
-riot_api_key = '?api_key=16fe66a6-fde7-4e0f-bb9f-f630fd95fda4'
+riot_api_key = '?api_key=a77a6e5a-cbb0-4327-ad39-867478a4cc1f'
 
 url_featured_matches = (
     riot_api_host + 'observer-mode/rest/featured' + riot_api_key)
@@ -724,7 +724,9 @@ class BuildResultPages(webapp2.RequestHandler):
             (img, lane, name, name))
 
   def GetTimestamp(self):
-    return ('<br/>Updated: %s<br/>' %
+    return ('<br/>Updated: %s<br/>Under the agreement of '
+            '<a href="https://developer.riotgames.com/terms#statement">'
+            'API TERMS & CONDITIONS</a><br/>' %
             datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
 
   def post(self):
